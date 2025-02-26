@@ -23,6 +23,9 @@ import { FileText, Download, Bell, ArrowRight, Check, ChevronDown, X } from 'luc
 import * as Select from "@radix-ui/react-select";
 import * as Dialog from "@radix-ui/react-dialog";
 
+import AgentSelect from "@/components/ui/my_components/AgentSelect";
+
+
 
 
 const socialMediaSchema = z.object({
@@ -62,37 +65,11 @@ export default function GenerateInquiries() {
   const [error, setError] = useState<string | null>(null);
   // Load personal files from Google Drive if user is signed in
   const [loading, setLoading] = useState(true);
-  const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitAttempt, setHasSubmitAttempt] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
-
-
-  useEffect(() => {
-    async function loadAgents() {
-      try {
-        const res = await fetch("/api/airtable/agents");
-        const data = await res.json();
-  
-        console.log("📌 Received agents in Frontend:", data);
-  
-        if (!data || !Array.isArray(data)) {
-          throw new Error("Invalid agents data received");
-        }
-  
-        setAgents(data.map((r: any) => ({
-          id: r.id,
-          name: r.name,
-        })));
-      } catch (error) {
-        console.error("🚨 Error loading agents:", error);
-        setAgents([]);
-      }
-    }
-    loadAgents();
-  }, []);
 
   useEffect(() => {
     if (!session) return;
@@ -254,45 +231,19 @@ export default function GenerateInquiries() {
                   {/* Agent Information */}
                   <div className="space-y-4">
                     <div className="space-y-2  max-w-md">
-                      <Label htmlFor="agentName">Select an Agent</Label>
 
-                      <Select.Root
-                        value={socialMediaForm.watch("agentRecordId") || ""}
-                        onValueChange={(value) => {
-                          const selectedAgent = agents.find((agent) => agent.id === value);
-                          if (selectedAgent) {
-                            socialMediaForm.setValue("agentRecordId", selectedAgent.id || "");
-                            socialMediaForm.setValue("agentName", selectedAgent.name || "");
+                      <AgentSelect
+                        value={socialMediaForm.watch("agentRecordId")}
+                        onChange={(id, agent) => {
+                          if (agent) {
+                            socialMediaForm.setValue("agentRecordId", id);
+                            socialMediaForm.setValue("agentName", agent.name);
                             socialMediaForm.clearErrors("agentName");
                           }
                         }}
-                      >
-                        <Select.Trigger className="w-full border border-gray-300 rounded-lg px-4 py-2 flex justify-between items-center text-gray-700 focus:ring-2 focus:ring-blue-500">
-                          <Select.Value placeholder="Select an agent" />
-                          <Select.Icon>
-                            <ChevronDown className="w-4 h-4 text-gray-500" />
-                          </Select.Icon>
-                        </Select.Trigger>
-                        <Select.Portal>
-                          <Select.Content className="bg-white border border-gray-300 rounded-lg shadow-md">
-                            <Select.ScrollUpButton className="flex justify-center items-center py-2">
-                              <ChevronDown className="w-4 h-4 text-gray-500" />
-                            </Select.ScrollUpButton>
-                            <Select.Viewport className="p-2">
-                              {agents
-                              .sort((a, b) => a.name.localeCompare(b.name)) // 🔥 Sort alphabetically
-                              .map((agent) => (
-                                <Select.Item key={agent.id} value={agent.id} className="cursor-pointer px-4 py-2 rounded-md hover:bg-blue-100 flex items-center">
-                                  <Select.ItemText>{agent.name}</Select.ItemText>
-                                  <Select.ItemIndicator>
-                                    <Check className="w-4 h-4 text-blue-500 ml-2" />
-                                  </Select.ItemIndicator>
-                                </Select.Item>
-                              ))}
-                            </Select.Viewport>
-                          </Select.Content>
-                        </Select.Portal>
-                      </Select.Root>
+                        error={socialMediaForm.formState.errors.agentName?.message}
+                      />
+
 
                       {socialMediaForm.formState.errors.agentName && (
                         <p className="text-sm text-red-500">{socialMediaForm.formState.errors.agentName.message}</p>

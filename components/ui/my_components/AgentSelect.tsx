@@ -1,89 +1,162 @@
 // components/ui/my_components/AgentSelect.tsx
+
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import useSWR from "swr";
 import * as Select from "@radix-ui/react-select";
-import { ChevronDown, ChevronUp, Check } from "lucide-react";
-import { cn } from "@/lib/utils"; // your helper to merge classes
-import { Label } from "@/components/ui/label"; // assuming you have this component
+import { ChevronDown, ChevronUp, Check, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
 
-// Define the Agent interface.
 export interface Agent {
   id: string;
   name: string;
 }
 
-// Define props for AgentSelect.
 export interface AgentSelectProps {
-  // The currently selected agent's id.
   value?: string;
-  // Callback fired when an agent is selected.
   onChange: (value: string, agent?: Agent) => void;
-  // Optional error message.
   error?: string;
-  // Optional label; default is "Select an Agent".
   label?: string;
+  enableRefresh?: boolean;
 }
+
+// SWR fetcher for agents
+const fetchAgents = async (url: string): Promise<Agent[]> => {
+  // Add a cache-busting timestamp
+  const urlWithTimestamp = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+  
+  console.log(`Fetching agents from: ${urlWithTimestamp}`);
+  const res = await fetch(urlWithTimestamp);
+  
+  if (!res.ok) {
+    console.error(`Error fetching agents: ${res.status}`);
+    throw new Error("Failed to load agents");
+  }
+  
+  const data = await res.json();
+  console.log(`Received ${Array.isArray(data) ? data.length : 'unknown'} agents`);
+  
+  // Handle different response formats
+  return Array.isArray(data) ? data : (data.agents || []);
+};
 
 export default function AgentSelect({
   value,
   onChange,
   error,
   label = "Select an Agent",
+  enableRefresh = true,
 }: AgentSelectProps) {
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Add a key for SWR cache that changes on refresh
+  const [cacheKey, setCacheKey] = useState(`/api/airtable/agents?initial=${Date.now()}`);
 
-  useEffect(() => {
-    async function loadAgents() {
-      try {
-        const res = await fetch("/api/airtable/agents");
-        const data = await res.json();
-
-        console.log("📌 Received agents in Frontend:", data);
-
-        if (!data || !Array.isArray(data)) {
-          throw new Error("Invalid agents data received");
-        }
-
-        // Map the response to our Agent interface.
-        const agentsList: Agent[] = data.map((r: any) => ({
-          id: r.id,
-          name: r.name,
-        }));
-        setAgents(agentsList);
-      } catch (error) {
-        console.error("🚨 Error loading agents:", error);
-        setAgents([]);
-      }
+  // We let SWR call the GET endpoint on mount.
+  const { data: agents = [], mutate, isValidating, isLoading } = useSWR<Agent[]>(
+    cacheKey,
+    fetchAgents,
+    {
+      revalidateOnMount: true,
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 5000, // 5 seconds
     }
-    loadAgents();
-  }, []);
+  );
+
+  // Handle manual refresh
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      
+      console.log("🔄 Manually refreshing agent list via POST endpoint...");
+      
+      // Call the refresh endpoint
+      const refreshRes = await fetch("/api/airtable/agents/refresh", { 
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store"
+        },
+        cache: "no-store"
+      });
+      
+      if (!refreshRes.ok) {
+        throw new Error(`Failed to refresh agents: ${refreshRes.status}`);
+      }
+      
+      // Parse the new agents data
+      const freshAgents = await refreshRes.json();
+      
+      console.log(`Received ${Array.isArray(freshAgents) ? freshAgents.length : 'unknown'} fresh agents`);
+      
+      // Generate a new cache key to force SWR to recognize this as new data
+      const newCacheKey = `/api/airtable/agents?refresh=${Date.now()}`;
+      setCacheKey(newCacheKey);
+      
+      // Update the SWR cache with the new key and data
+      await mutate(freshAgents, {
+        revalidate: false,
+      });
+      
+      console.log("✅ SWR cache updated with fresh agents");
+    } catch (error) {
+      console.error("Failed to refresh agents:", error);
+      
+      // Force a complete reset and refetch on error
+      const newCacheKey = `/api/airtable/agents?error=${Date.now()}`;
+      setCacheKey(newCacheKey);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const isCurrentlyLoading = isLoading || isValidating || isRefreshing;
 
   return (
     <div className="w-full">
-      <Label htmlFor="agentSelect" className="block text-sm font-medium text-primary-dark mb-1">
-        {label}
-      </Label>
+      <div className="flex justify-between items-center mb-1">
+        <Label htmlFor="agentSelect" className="block text-sm font-medium text-primary-dark">
+          {label}
+        </Label>
+        
+        {enableRefresh && (
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isCurrentlyLoading}
+            className="inline-flex items-center text-xs text-primary-medium hover:text-primary-dark disabled:opacity-50"
+          >
+            <RefreshCw 
+              className={cn(
+                "h-3 w-3 mr-1",
+                isCurrentlyLoading && "animate-spin"
+              )} 
+            />
+            {isCurrentlyLoading ? "Refreshing..." : "Refresh"}
+          </button>
+        )}
+      </div>
 
       <Select.Root
         value={value || ""}
         onValueChange={(selectedValue: string) => {
           const selectedAgent = agents.find((agent) => agent.id === selectedValue);
-          if (selectedAgent) {
-            onChange(selectedAgent.id, selectedAgent);
-          } else {
-            onChange("");
-          }
+          onChange(selectedAgent ? selectedAgent.id : "", selectedAgent);
         }}
       >
         <Select.Trigger
           id="agentSelect"
           className={cn(
             "flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-accent-gold-light focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-            error ? " focus:ring-accent-gold-light" : "border-input focus:ring-accent-gold-light",
-            value ? "bg-white text-primary-dark" : "bg-gray-50 text-gray-400"
+            error ? "focus:ring-red-500 border-red-500" : "border-input focus:ring-accent-gold-light",
+            value ? "bg-white text-primary-dark" : "bg-gray-50 text-gray-400",
+            isCurrentlyLoading && "opacity-70"
           )}
           aria-invalid={!!error}
+          disabled={isCurrentlyLoading}
         >
           <Select.Value placeholder="Select an agent" />
           <Select.Icon asChild>
@@ -93,18 +166,23 @@ export default function AgentSelect({
         <Select.Portal>
           <Select.Content
             className="z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border border-input bg-white shadow-md focus:outline-none focus:ring-2 focus:ring-accent-gold-light"
+            position="popper"
+            sideOffset={4}
           >
             <Select.ScrollUpButton className="flex cursor-default items-center justify-center py-1">
               <ChevronUp className="h-4 w-4 text-primary-medium" />
             </Select.ScrollUpButton>
             <Select.Viewport className="p-2">
-              {agents
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((agent) => (
+              {isCurrentlyLoading ? (
+                <div className="py-2 px-8 text-sm text-gray-500">Loading agents...</div>
+              ) : agents.length === 0 ? (
+                <div className="py-2 px-8 text-sm text-gray-500">No agents found</div>
+              ) : (
+                agents.map((agent: Agent) => (
                   <Select.Item
                     key={agent.id}
                     value={agent.id}
-                    className="relative flex w-full cursor-pointer select-none items-center rounded-md py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent-gold-light focus:text-primary-dark"
+                    className="relative flex w-full cursor-pointer select-none items-center rounded-md py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent-gold-light focus:text-primary-dark hover:bg-accent-gold-lighter"
                   >
                     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
                       <Select.ItemIndicator>
@@ -113,7 +191,8 @@ export default function AgentSelect({
                     </span>
                     <Select.ItemText>{agent.name}</Select.ItemText>
                   </Select.Item>
-                ))}
+                ))
+              )}
             </Select.Viewport>
             <Select.ScrollDownButton className="flex cursor-default items-center justify-center py-1">
               <ChevronDown className="h-4 w-4 text-primary-medium" />

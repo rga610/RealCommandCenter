@@ -1,0 +1,59 @@
+Push updates from 'dev' to 'staging':
+    git checkout staging
+    git merge dev
+    git push origin staging
+
+Push updates from 'staging' to 'main:
+    git checkout main
+    git merge staging
+    git push origin main
+
+
+1. Working on new features:
+    git checkout -b feature/new-feature
+
+2. Check status:
+    git status
+    EX:
+        Untracked files:
+        (use "git add <file>..." to include in what will be committed)
+        app/pages/NewFeature.tsx
+
+3. 1. Track specific files:
+    git add app/pages/NewFeature.tsx
+
+
+3. 2. Track all modified and new files:
+    git add .
+
+4. Commit (save) changes
+    git commit -m "Created NewFeature.tsx - Initial version"
+
+5. 1. Push to Github:
+    git push origin dev
+
+5. 2. Push feature branch to Github:
+    git push origin feature/new-feature
+
+Merge features back to dev:
+    git checkout dev
+    git merge feature/new-feature
+    git branch -d feature/new-feature
+    git push origin dev
+
+
+Full Git Workflow for a New Feature:
+1. git checkout dev                            # Make sure you're in the dev branch
+2. git checkout -b feature/new-feature         # (Optional) Create a feature branch
+3. Work on the feature (e.g., NewFeature.tsx)  # Create and work on new files
+4. git add .                                   # Track all changes
+5. git commit -m "Added NewFeature.tsx"        # Save the changes
+6. git push origin feature/new-feature         # Upload to GitHub
+7. (After testing) Merge into dev:
+   - git checkout dev
+   - git merge feature/new-feature
+   - git push origin dev
+8. (Optional) Delete the feature branch:
+   - git branch -d feature/new-feature
+
+

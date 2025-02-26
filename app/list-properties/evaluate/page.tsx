@@ -13,7 +13,7 @@ import ComparableInput from "./comparables";
 import MatchScore from "./MatchScore"
 
 export default function EvaluateModule() {
-  const module = MODULES.sell;
+  const module = MODULES.list;
 
   // Set mode: "onBlur" so inputs update their values when they lose focus.
   const methods = useForm({

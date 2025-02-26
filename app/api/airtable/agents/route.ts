@@ -1,35 +1,38 @@
 // app/api/airtable/agents/route.ts
 
 import { NextResponse } from "next/server";
-import { fetchAirtableRecords, AirtableRecord } from "@/app/lib/airtable";
+import { getAndCacheAgents } from "@/app/lib/agents";
 
-export async function GET() {
-    try {
-        const baseId = process.env.AIRTABLE_RRHH_BASE_ID;
-        const tableId = process.env.AIRTABLE_RRHH_PEOPLE_TABLE_ID;
-        const viewName = "Agentes de venta";
+export async function GET(request: Request) {
+  try {
+    // Check for an optional ?forceRefresh=true
+    const { searchParams } = new URL(request.url);
+    const forceRefresh = searchParams.get("forceRefresh") === "true";
 
-        if (!baseId || !tableId) {
-            throw new Error("❌ Missing Airtable Base ID or Table ID in environment variables!");
-        }
-
-        const rawAgents: AirtableRecord[] = await fetchAirtableRecords(baseId, tableId, viewName);
-
-        // ✅ Fix filter logic: Exclude only if explicitly "N/A"
-        const agents = rawAgents
-            .filter((record) => {
-                const name = record?.Nombre?.trim(); // ✅ No `.fields`
-                return name && name !== "N/A";
-            })
-            .map((record) => ({
-                id: record.id,
-                name: record.Nombre || "Unnamed Agent", // ✅ Directly from `record`
-            }))
-            .sort((a, b) => a.name.localeCompare(b.name));
-
-        return NextResponse.json(agents);
-    } catch (error) {
-        console.error("❌ Airtable API Error:", error);
-        return NextResponse.json({ error: "Failed to load agents" }, { status: 500 });
+    console.log(`GET /api/airtable/agents -> forceRefresh: ${forceRefresh}`);
+    
+    const agents = await getAndCacheAgents(forceRefresh);
+    
+    // Add cache control headers
+    const headers = new Headers();
+    
+    if (forceRefresh) {
+      // If this was a force refresh, tell browsers not to cache
+      headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      headers.set('Pragma', 'no-cache');
+      headers.set('Expires', '0');
+    } else {
+      // For normal requests, allow modest browser caching
+      headers.set('Cache-Control', 'max-age=300, s-maxage=3600'); // 5 min browser, 1 hour CDN
     }
+    
+    // Return the agents array directly to maintain compatibility with existing code
+    return NextResponse.json(agents, { headers });
+  } catch (error) {
+    console.error("❌ API Error:", error);
+    return NextResponse.json(
+      { error: "Failed to load agents", message: error instanceof Error ? error.message : "Unknown error" }, 
+      { status: 500 }
+    );
+  }
 }
