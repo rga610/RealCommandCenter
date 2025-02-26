@@ -40,17 +40,18 @@ git checkout dev
 # 2️⃣ Merge the feature branch into dev
 git merge feature/new-feature # Change to actual feature name
 
+# 4️⃣ Push updated dev to GitHub
+git push origin dev
+
 # 3️⃣ Delete the feature branch locally & remotely (cleanup)
 git branch -d feature/new-feature # Change to actual feature name
 git push origin --delete feature/new-feature # Change to actual feature name
 
-# 4️⃣ Push updated dev to GitHub
-git push origin dev
 
 # 🎯 Full Git Workflow for a New Feature
 git checkout dev                            # Make sure you're in the dev branch
 git checkout -b feature/new-feature         # Create a feature branch from dev
-git push -u origin feature/new-feature      # 🚨 Push it to GitHub immediately
+git push -u origin feature/new-feature      # Push it to GitHub immediately
 # Work on the feature (e.g., create/edit NewFeature.tsx)
 git add .                                   # Track all changes
 git commit -m "Added NewFeature.tsx"        # Save the changes
