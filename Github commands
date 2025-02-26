@@ -1,59 +1,64 @@
-Push updates from 'dev' to 'staging':
-    git checkout staging
-    git merge dev
-    git push origin staging
+# 🔄 Push Updates Between Main Branches
+# 1️⃣ Push updates from 'dev' to 'staging'
+git checkout staging
+git merge dev
+git push origin staging
 
-Push updates from 'staging' to 'main:
-    git checkout main
-    git merge staging
-    git push origin main
-
-
-1. Working on new features:
-    git checkout -b feature/new-feature
-
-2. Check status:
-    git status
-    EX:
-        Untracked files:
-        (use "git add <file>..." to include in what will be committed)
-        app/pages/NewFeature.tsx
-
-3. 1. Track specific files:
-    git add app/pages/NewFeature.tsx
+# 2️⃣ Push updates from 'staging' to 'main'
+git checkout main
+git merge staging
+git push origin main
 
 
-3. 2. Track all modified and new files:
-    git add .
+# 🛠 Working on New Features
 
-4. Commit (save) changes
-    git commit -m "Created NewFeature.tsx - Initial version"
+# 1️⃣ Create a new feature branch from dev and push it to GitHub
+git checkout dev
+git checkout -b feature/new-feature # Change to actual feature name
+git push -u origin feature/new-feature  # 🚨 Ensures the branch exists on GitHub    # Change to actual feature name
 
-5. 1. Push to Github:
-    git push origin dev
+# 2️⃣ Check the status of changes
+git status
 
-5. 2. Push feature branch to Github:
-    git push origin feature/new-feature
+# 3️⃣ Track changes
+# Track a specific file
+git add app/pages/NewFeature.tsx # Change to actual feature name
+# OR track all new & modified files
+git add .
 
-Merge features back to dev:
-    git checkout dev
-    git merge feature/new-feature
-    git branch -d feature/new-feature
-    git push origin dev
+# 4️⃣ Save changes (commit)
+git commit -m "Created NewFeature.tsx - Initial version" # Change actual commit comments
 
+# 5️⃣ Push the feature branch to GitHub
+git push origin feature/new-feature # Change to actual feature name
 
-Full Git Workflow for a New Feature:
-1. git checkout dev                            # Make sure you're in the dev branch
-2. git checkout -b feature/new-feature         # (Optional) Create a feature branch
-3. Work on the feature (e.g., NewFeature.tsx)  # Create and work on new files
-4. git add .                                   # Track all changes
-5. git commit -m "Added NewFeature.tsx"        # Save the changes
-6. git push origin feature/new-feature         # Upload to GitHub
-7. (After testing) Merge into dev:
-   - git checkout dev
-   - git merge feature/new-feature
-   - git push origin dev
-8. (Optional) Delete the feature branch:
-   - git branch -d feature/new-feature
+# 🔄 Merging a Completed Feature Back into dev
 
+# 1️⃣ Switch to dev
+git checkout dev
 
+# 2️⃣ Merge the feature branch into dev
+git merge feature/new-feature # Change to actual feature name
+
+# 3️⃣ Delete the feature branch locally & remotely (cleanup)
+git branch -d feature/new-feature # Change to actual feature name
+git push origin --delete feature/new-feature # Change to actual feature name
+
+# 4️⃣ Push updated dev to GitHub
+git push origin dev
+
+# 🎯 Full Git Workflow for a New Feature
+git checkout dev                            # Make sure you're in the dev branch
+git checkout -b feature/new-feature         # Create a feature branch from dev
+git push -u origin feature/new-feature      # 🚨 Push it to GitHub immediately
+# Work on the feature (e.g., create/edit NewFeature.tsx)
+git add .                                   # Track all changes
+git commit -m "Added NewFeature.tsx"        # Save the changes
+git push origin feature/new-feature         # Push to GitHub
+# (After testing) Merge into dev:
+git checkout dev
+git merge feature/new-feature
+git push origin dev
+# (Cleanup) Delete the feature branch:
+git branch -d feature/new-feature
+git push origin --delete feature/new-feature
