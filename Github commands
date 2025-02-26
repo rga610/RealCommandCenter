@@ -1,3 +1,12 @@
+# Check and save changes
+git branch  # Check current branch
+git status  # See what changed
+git add .  # Track all changes
+git commit -m "Your commit message"  # Save the changes
+git push origin dev  # Upload to GitHub, change branch name if needed
+
+
+
 # 🔄 Push Updates Between Main Branches
 # 1️⃣ Push updates from 'dev' to 'staging'
 git checkout staging
