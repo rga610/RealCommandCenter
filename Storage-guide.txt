@@ -1,0 +1,138 @@
+# Media & Asset Management System Setup Guide
+
+This guide covers the configuration and integration of Bunny.net and Cloudinary for our **Media & Asset Management System**. The setup includes:
+- **Storage Zones** for different types of media
+- **Pull Zones** for optimized content delivery
+- **Video Libraries** for hosting and streaming videos
+- **Cloudinary Integration** for image transformations
+
+---
+## 🏗️ **1. Storage Zones Setup (Bunny.net)**
+We created different **Storage Zones** in Bunny.net to separate and organize different types of assets.
+
+| Storage Zone | Purpose | Tier | Replication |
+|-------------|---------|------|------------|
+| **archived-media** | Old and non-active assets | Standard HDD | None |
+| **branding-assets** | Logos, banners, and corporate branding materials | Edge SSD | None |
+| **listing-media** | Media related to property listings (including videos) | Edge SSD | Replicated |
+| **marketing-media** | Media for marketing campaigns (not linked to specific listings) | Edge SSD | Replicated |
+| **ui-assets** | Assets used in internal tools and UI components | Edge SSD | None |
+
+**Important Notes:**
+- **Archived Media** is stored on HDD for cost-efficiency since it's rarely accessed.
+- **Listing Media & Marketing Media** are **replicated** across multiple regions to ensure fast loading speeds.
+- **Branding & UI Assets** are SSD-based but not replicated, since they're lightweight and less frequently updated.
+
+---
+## 🚀 **2. Pull Zones Setup (Bunny.net CDN)**
+To serve our assets efficiently, we configured **Pull Zones** for each storage type.
+
+| Pull Zone | Purpose | Region Pricing |
+|-------------|----------------|----------------|
+| **listing-media** | Serves property listing images and videos | Global (Standard CDN) |
+| **marketing-media** | Serves marketing images, email images, and campaign assets | Global (Standard CDN) |
+| **branding-assets** | Serves corporate branding assets (logos, etc.) | Global (Standard CDN) |
+| **ui-assets** | Serves UI elements and images for internal tools | Global (Standard CDN) |
+
+**Pull Zones allow for:**
+- Fast global distribution using **Bunny.net CDN**.
+- **Optimized caching** to reduce repeated requests.
+- Secure **Signed URLs** when required.
+
+---
+## 🎥 **3. Video Libraries (Bunny.net Stream)**
+For video streaming, we created **Video Libraries** in Bunny.net instead of using Storage Zones.
+
+| Video Library | Purpose |
+|--------------|---------|
+| **listing-videos** | Videos associated with property listings |
+| **marketing-videos** | Videos used for marketing campaigns |
+
+### 🛠️ **Advantages of Video Libraries:**
+- **Adaptive Streaming**: Videos are automatically encoded into multiple resolutions.
+- **Built-in Player**: Bunny provides an embeddable, optimized video player.
+- **Lower Bandwidth Costs**: Videos are streamed efficiently instead of full-file downloads.
+
+---
+## 🎨 **4. Bunny Optimizer & Image Classes**
+To optimize images on the fly, we set up **Bunny Optimizer** with predefined **Image Classes**.
+
+| Class Name | Width | Height | Quality | Format |
+|-----------|------|------|--------|--------|
+| **thumbnail** | 300px | 200px | Auto | WebP |
+| **medium** | 800px | Auto | 80% | WebP |
+| **highres** | 1920px | Auto | 90% | WebP |
+| **email** | 600px | Auto | 70% | WebP |
+| **social** | 1200px | 630px | 85% | WebP |
+
+**Optimizer Features Enabled:**
+- **WebP Compression** for reduced file sizes.
+- **Smart Image Optimization** for desktop & mobile.
+- **Dynamic Image API** to resize, crop, and sharpen images on demand.
+- **Force Transformation Class** disabled (allows manual resizing when needed).
+
+---
+## ☁️ **5. Cloudinary Integration (For Image Processing)**
+Cloudinary is used **only for advanced image transformations** that Bunny Optimizer cannot handle.
+
+### 🔑 **Environment Variables for Cloudinary**
+Set these values in your `.env` file:
+```
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+CLOUDINARY_URL=cloudinary://your-api-key:your-api-secret@your-cloud-name
+```
+
+### 📌 **How Cloudinary Fits Into the Workflow:**
+1. **Initial Upload** → Bunny.net Storage
+2. **Selection & Approval** → Agents review in Airtable
+3. **Processing** → Cloudinary (only if needed for AI-enhanced edits, watermarking, etc.)
+4. **Final Hosting** → Bunny.net Storage/CDN
+
+---
+## 🔐 **6. Security & API Keys**
+All storage zones, video libraries, and Cloudinary are accessed via **secure API keys**.
+
+### **Bunny.net API Keys**
+```
+BUNNY_API_KEY=your-api-key
+BUNNY_STORAGE_LISTING_MEDIA_PASSWORD=your-password
+BUNNY_STORAGE_MARKETING_MEDIA_PASSWORD=your-password
+BUNNY_STORAGE_BRANDING_ASSETS_PASSWORD=your-password
+BUNNY_STORAGE_UI_ASSETS_PASSWORD=your-password
+BUNNY_STORAGE_ARCHIVED_MEDIA_PASSWORD=your-password
+```
+
+### **Bunny Video Library Keys**
+```
+BUNNY_LISTING_VIDEOS_LIB_ID=your-library-id
+BUNNY_LISTING_VIDEOS_API_KEY=your-api-key
+BUNNY_MARKETING_VIDEOS_LIB_ID=your-library-id
+BUNNY_MARKETING_VIDEOS_API_KEY=your-api-key
+```
+
+### **Cloudinary API Keys**
+```
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+```
+
+---
+## 🔄 **7. Future Improvements & Considerations**
+- **Automated Archiving**: Move old/unpublished media to `archived-media` automatically.
+- **Cache Control & Expiry Policies**: Fine-tune caching for different asset types.
+- **Signed URL Authentication**: Restrict access to internal tools & sensitive assets.
+- **User-Level Access Restrictions**: Implement permissions based on agent roles.
+
+---
+## 🎯 **Conclusion**
+This setup ensures:
+✅ **Optimized Storage & Distribution** via Bunny.net CDN.
+✅ **Cost-Effective Video Streaming** with Bunny.net Stream.
+✅ **On-Demand Image Processing** using Bunny Optimizer & Cloudinary.
+✅ **Scalability & Security** with API authentication & storage policies.
+
+This guide should serve as a **complete reference** for setting up and maintaining the **Media & Asset Management System**.
+

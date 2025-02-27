@@ -36,6 +36,7 @@
     "lucide-react": "^0.279.0",
     "next": "^15.1.7",
     "next-auth": "^4.24.11",
+    "next-cloudinary": "^6.16.0",
     "postcss": "^8.4.30",
     "puppeteer": "^24.2.0",
     "react": "18.2.0",
@@ -54,5 +55,8 @@
     "typescript": "5.2.2",
     "yup": "^1.6.1",
     "zod": "^3.22.2"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0"
   }
 }

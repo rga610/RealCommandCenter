@@ -1,8 +1,7 @@
-// app/list-properties/generate-inquiries/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
-import { useUser } from "@clerk/nextjs"; // Clerk-only, no next-auth
+import { useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -17,19 +16,17 @@ import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
+import MarketingAssets from "@/components/ui/my_components/media/MarketingAssets";
+import ListingMedia from "@/components/ui/my_components/media/ListingMediaSection";
+
+
 import {
   FileText,
   Download,
   Bell,
-  ArrowRight,
-  Check,
-  ChevronDown,
   X,
-  Building2,
-  MessageSquarePlus,
 } from "lucide-react";
 
-import * as Select from "@radix-ui/react-select";
 import * as Dialog from "@radix-ui/react-dialog";
 import AgentSelect from "@/components/ui/my_components/AgentSelect";
 
@@ -42,26 +39,25 @@ const socialMediaSchema = z.object({
     .transform((url) =>
       url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`
     )
-    .refine((url) => {
-      try {
-        new URL(url);
-        return true;
-      } catch {
-        return false;
-      }
-    }, { message: "Invalid URL format" }),
+    .refine(
+      (url) => {
+        try {
+          new URL(url);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid URL format" }
+    ),
   additionalNotes: z.string().optional(),
 });
 
 export default function GenerateInquiries() {
-  // 1) Clerk user check
+  // 1) Clerk user
   const { user, isSignedIn, isLoaded } = useUser();
 
-  // 2) If Clerk is still loading, or user not signed in => fallback
-  if (!isLoaded) return <p>Loading user...</p>;
-  if (!isSignedIn) return null; // or redirect to /auth/signin
-
-  // 3) RHF form for social media request
+  // 2) Form
   const socialMediaForm = useForm<z.infer<typeof socialMediaSchema>>({
     resolver: zodResolver(socialMediaSchema),
     defaultValues: {
@@ -71,53 +67,19 @@ export default function GenerateInquiries() {
     },
   });
 
-  // 4) States for handle submission, success modal, error modal, etc.
+  // 3) All Hooks must be defined unconditionally (before any `return`)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitAttempt, setHasSubmitAttempt] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [activeTab, setActiveTab] = useState("social-media-request");
 
-  // 5) States & logic for “Lead-Gen Assets” (Google Drive) tab
-  const [activeTab, setActiveTab] = useState("social-media-request"); // track which tab
-  const [personalFiles, setPersonalFiles] = useState<
-    {
-      id: string;
-      name: string;
-      webViewLink: string;
-      thumbnailLink: string;
-      modifiedTime: string;
-      createdTime: string;
-    }[]
-  >([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loadingDrive, setLoadingDrive] = useState(false);
-  const [driveLoaded, setDriveLoaded] = useState(false);
+  // 4) If loading or not signed in, render fallback UI (but after Hooks)
+  if (!isLoaded) return <p>Loading user...</p>;
+  if (!isSignedIn) return null; // or redirect to /auth/signin
 
-  // 6) Only fetch personal files from Google Drive if user selects “marketing-assets” tab & not loaded yet
-  useEffect(() => {
-    if (activeTab === "marketing-assets" && !driveLoaded) {
-      setLoadingDrive(true);
-      fetch("/api/drive")
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to fetch files");
-          return res.json();
-        })
-        .then((data) => {
-          setPersonalFiles(data);
-        })
-        .catch((err) => {
-          setError("Could not load your personal files. Please try again later.");
-          console.error("Error fetching files:", err);
-        })
-        .finally(() => {
-          setLoadingDrive(false);
-          setDriveLoaded(true);
-        });
-    }
-  }, [activeTab, driveLoaded]);
-
-  // 7) Submit: Social Media Request
+  // 5) Submission handler
   async function onSubmitSocialMedia(values: z.infer<typeof socialMediaSchema>) {
     try {
       setIsSubmitting(true);
@@ -160,12 +122,13 @@ export default function GenerateInquiries() {
     }
   }
 
-  // 8) Page-level breadcrumb
+  // 6) Breadcrumb
   const breadcrumbItems = [
     { label: "List Properties", href: "/list-properties" },
     { label: "Generate Seller Inquiries", href: "/list-properties/generate-inquiries" },
   ];
 
+  // 7) Render
   return (
     <main className="min-h-screen max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-background">
       <Breadcrumb items={breadcrumbItems} />
@@ -237,11 +200,16 @@ export default function GenerateInquiries() {
           <TabsContent value="social-media-request" className="bg-white rounded-lg shadow-lg">
             <div className="p-6">
               <h2 className="text-xl font-serif text-primary-dark mb-2">Request Social Media Post</h2>
-              <p className="text-primary-medium mb-6">Submit a request to feature one of your listings on social media</p>
+              <p className="text-primary-medium mb-6">
+                Submit a request to feature one of your listings on social media
+              </p>
 
               <Form {...socialMediaForm}>
                 <form
-                  onSubmit={socialMediaForm.handleSubmit(onSubmitSocialMedia, () => setHasSubmitAttempt(true))}
+                  onSubmit={socialMediaForm.handleSubmit(
+                    onSubmitSocialMedia,
+                    () => setHasSubmitAttempt(true)
+                  )}
                   className="space-y-6 max-w-wide"
                 >
                   {/* Agent Info */}
@@ -320,110 +288,11 @@ export default function GenerateInquiries() {
                 </p>
               </div>
 
-              {/* Generic lead-gen assets (always shown) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card className="p-6 hover:shadow-lg transition-shadow flex flex-col h-full">
-                  <h3 className="text-lg font-medium mb-2 text-primary-dark">Property Pitch Deck</h3>
-                  <p className="text-sm text-gray-600 mb-4 flex-grow">
-                    Professional presentation template for property pitches
-                  </p>
-                  <Button variant="outline" className="w-full flex items-center gap-2 mt-auto">
-                    <Download className="h-4 w-4" />
-                    <a
-                      href="https://drive.google.com/file/d/1YDeVH6_NJzKa7gaRTHAfG_4gJVs6NqrG/view?usp=drive_link"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Download Template
-                    </a>
-                  </Button>
-                </Card>
+              {/* Now only marketing assets here */}
+              <MarketingAssets />
 
-                <Card className="p-6 hover:shadow-lg transition-shadow flex flex-col h-full">
-                  <h3 className="text-lg font-medium mb-2 text-primary-dark">Social Media Kit</h3>
-                  <p className="text-sm text-gray-600 mb-4 flex-grow">
-                    Templates and graphics for social media marketing
-                  </p>
-                  <Button variant="outline" className="w-full flex items-center gap-2 mt-auto">
-                    <Download className="h-4 w-4" />
-                    <a
-                      href="https://drive.google.com/file/d/0987654321/view"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Download Kit
-                    </a>
-                  </Button>
-                </Card>
-
-                <Card className="p-6 hover:shadow-lg transition-shadow flex flex-col h-full">
-                  <h3 className="text-lg font-medium mb-2 text-primary-dark">
-                    Luxury Living Costa Rica Magazine
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-4 flex-grow">
-                    Our exclusive magazine featuring luxury properties and lifestyle articles
-                  </p>
-                  <Button variant="outline" className="w-full flex items-center gap-2 mt-auto">
-                    <Download className="h-4 w-4" />
-                    <a
-                      href="https://drive.google.com/file/d/YOUR_ACTUAL_SELLERS_GUIDE_FILE_ID/view"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Download Magazine
-                    </a>
-                  </Button>
-                </Card>
-              </div>
-
-              {/* Personal Files -> only loaded if user clicked this tab */}
-              <div className="bg-white rounded-xl shadow-lg p-8 mt-8">
-                <h2 className="text-xl font-bold mb-2">Your Personal Files</h2>
-                <p className="text-primary-medium mb-6">
-                  Access agent-specific marketing assets
-                </p>
-                {error && <div className="text-red-500 mb-4">{error}</div>}
-                {loadingDrive ? (
-                  <p className="text-gray-600">Fetching files...</p>
-                ) : (
-                  <>
-                    {personalFiles.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {personalFiles.map((file) => (
-                          <div
-                            key={file.id}
-                            className="file-card bg-white rounded-lg shadow-lg p-4 hover:shadow-xl transition-shadow"
-                          >
-                            {file.thumbnailLink && (
-                              <img
-                                src={file.thumbnailLink}
-                                alt={file.name}
-                                className="w-full h-48 object-cover rounded-lg mb-4"
-                              />
-                            )}
-                            <h3 className="text-lg font-semibold text-primary-dark mb-2">
-                              {file.name}
-                            </h3>
-                            <p className="text-sm text-gray-600 mb-4 flex-grow">
-                              Last modified: {new Date(file.modifiedTime).toLocaleDateString()}
-                            </p>
-                            <a
-                              href={file.webViewLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary-dark hover:underline"
-                            >
-                              Open in Drive
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p>No personal files found.</p>
-                    )}
-                  </>
-                )}
-              </div>
+              {/* New Listing Media Section below it */}
+              <ListingMedia />
             </div>
           </TabsContent>
 
@@ -433,9 +302,7 @@ export default function GenerateInquiries() {
               <h2 className="text-xl font-serif text-primary-dark mb-2">
                 Lead Alerts Configuration
               </h2>
-              <p className="text-primary-medium">
-                Set up your lead notification preferences
-              </p>
+              <p className="text-primary-medium">Set up your lead notification preferences</p>
               <div className="space-y-6">
                 <Card className="p-6">
                   <h3 className="text-lg font-medium mb-4 text-primary-dark">
