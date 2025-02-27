@@ -1,158 +1,170 @@
-//app\list-properties\generate-inquiries\page.tsx
+// app/list-properties/generate-inquiries/page.tsx
+"use client";
 
-'use client';
+import { useState, useEffect } from "react";
+import { useUser } from "@clerk/nextjs"; // Clerk-only, no next-auth
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
-import { useSession } from 'next-auth/react';
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Form } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
-import { Breadcrumb } from '@/components/ui/breadcrumb';
-import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Form } from '@/components/ui/form';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
+import {
+  FileText,
+  Download,
+  Bell,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  X,
+  Building2,
+  MessageSquarePlus,
+} from "lucide-react";
 
-import { FileText, Download, Bell, ArrowRight, Check, ChevronDown, X } from 'lucide-react';
 import * as Select from "@radix-ui/react-select";
 import * as Dialog from "@radix-ui/react-dialog";
-
 import AgentSelect from "@/components/ui/my_components/AgentSelect";
-
-
-
 
 const socialMediaSchema = z.object({
   agentRecordId: z.string().optional(),
-  agentName: z.string().min(1, 'Agent name is required'),
+  agentName: z.string().min(1, "Agent name is required"),
   propertyLink: z
     .string()
-    .min(1, 'Listing Link is required')
-    .transform((url) => (url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`))
+    .min(1, "Listing Link is required")
+    .transform((url) =>
+      url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`
+    )
     .refine((url) => {
       try {
-        new URL(url); // ✅ Validate as a proper URL
+        new URL(url);
         return true;
       } catch {
         return false;
       }
-    }, { message: 'Invalid URL format' }),
+    }, { message: "Invalid URL format" }),
   additionalNotes: z.string().optional(),
 });
 
-
-
-
 export default function GenerateInquiries() {
-  const { data: session, status } = useSession();
+  // 1) Clerk user check
+  const { user, isSignedIn, isLoaded } = useUser();
+
+  // 2) If Clerk is still loading, or user not signed in => fallback
+  if (!isLoaded) return <p>Loading user...</p>;
+  if (!isSignedIn) return null; // or redirect to /auth/signin
+
+  // 3) RHF form for social media request
   const socialMediaForm = useForm<z.infer<typeof socialMediaSchema>>({
     resolver: zodResolver(socialMediaSchema),
     defaultValues: {
-      agentName: '',
-      propertyLink: '',
-      additionalNotes: '',
+      agentName: "",
+      propertyLink: "",
+      additionalNotes: "",
     },
   });
-  const [personalFiles, setPersonalFiles] = useState<
-    { id: string; name: string; webViewLink: string; thumbnailLink: string; modifiedTime: string; createdTime: string;}[]
-  >([]);
-  const [error, setError] = useState<string | null>(null);
-  // Load personal files from Google Drive if user is signed in
-  const [loading, setLoading] = useState(true);
+
+  // 4) States for handle submission, success modal, error modal, etc.
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitAttempt, setHasSubmitAttempt] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
 
+  // 5) States & logic for “Lead-Gen Assets” (Google Drive) tab
+  const [activeTab, setActiveTab] = useState("social-media-request"); // track which tab
+  const [personalFiles, setPersonalFiles] = useState<
+    {
+      id: string;
+      name: string;
+      webViewLink: string;
+      thumbnailLink: string;
+      modifiedTime: string;
+      createdTime: string;
+    }[]
+  >([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loadingDrive, setLoadingDrive] = useState(false);
+  const [driveLoaded, setDriveLoaded] = useState(false);
+
+  // 6) Only fetch personal files from Google Drive if user selects “marketing-assets” tab & not loaded yet
   useEffect(() => {
-    if (!session) return;
+    if (activeTab === "marketing-assets" && !driveLoaded) {
+      setLoadingDrive(true);
+      fetch("/api/drive")
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to fetch files");
+          return res.json();
+        })
+        .then((data) => {
+          setPersonalFiles(data);
+        })
+        .catch((err) => {
+          setError("Could not load your personal files. Please try again later.");
+          console.error("Error fetching files:", err);
+        })
+        .finally(() => {
+          setLoadingDrive(false);
+          setDriveLoaded(true);
+        });
+    }
+  }, [activeTab, driveLoaded]);
 
-    const fetchFiles = async () => {
-      try {
-        setLoading(true); // Start loading
-        const response = await fetch(`/api/drive`);
-        if (!response.ok) throw new Error("Failed to fetch files");
-        const data = await response.json();
-        setPersonalFiles(data);
-      } catch (err) {
-        setError("Could not load your personal files. Please try again later.");
-        console.error("Error fetching files:", err);
-      } finally {
-        setLoading(false); // Stop loading
-      }
-    };
-
-
-    fetchFiles();
-  }, [session]);
-
-  // Prevent render until we know if user is signed in or not
-  if (!session) return null;
-
-
-
-
-  const breadcrumbItems = [
-    { label: 'List Properties', href: '/list-properties' },
-    { label: 'Generate Seller Inquiries', href: '/list-properties/generate-inquiries' },
-  ];
-  
-
+  // 7) Submit: Social Media Request
   async function onSubmitSocialMedia(values: z.infer<typeof socialMediaSchema>) {
     try {
       setIsSubmitting(true);
       setHasSubmitAttempt(false);
       setApiError(null);
-  
-      // 🔥 Automatically prepend "https://" if missing
+
+      // ensure https://
       let formattedUrl = values.propertyLink.trim();
       if (!/^https?:\/\//i.test(formattedUrl)) {
         formattedUrl = `https://${formattedUrl}`;
       }
 
-      const response = await fetch('/api/airtable/social-media', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+      const response = await fetch("/api/airtable/social-media", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...values, propertyLink: formattedUrl }),
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit social media request.');
+        throw new Error(errorData.error || "Failed to submit social media request.");
       }
-  
-      // ✅ Scroll to top on success
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-  
-      // ✅ Show success modal
+
+      // success => show modal + reset form
+      window.scrollTo({ top: 0, behavior: "smooth" });
       setShowSuccessModal(true);
-  
-      // ✅ Reset form fields after success
       socialMediaForm.reset({
         agentName: "",
         agentRecordId: "",
         propertyLink: "",
         additionalNotes: "",
       });
-  
     } catch (error: any) {
-      console.error('❌ Social Media API Error:', error);
-      setApiError(error.message || 'An error occurred while submitting.');
+      console.error("❌ Social Media API Error:", error);
+      setApiError(error.message || "An error occurred while submitting.");
       setShowErrorModal(true);
       setHasSubmitAttempt(true);
     } finally {
       setIsSubmitting(false);
     }
   }
-  
 
+  // 8) Page-level breadcrumb
+  const breadcrumbItems = [
+    { label: "List Properties", href: "/list-properties" },
+    { label: "Generate Seller Inquiries", href: "/list-properties/generate-inquiries" },
+  ];
 
   return (
     <main className="min-h-screen max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-background">
@@ -165,19 +177,23 @@ export default function GenerateInquiries() {
         </p>
       </div>
 
+      {/* Tabs */}
       <div className="relative">
-        <Tabs defaultValue="social-media-request" className="space-y-8">
+        <Tabs
+          defaultValue="social-media-request"
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-8"
+        >
           <div className="sticky top-0 z-10">
             <TabsList className="w-full border-b p-0 h-auto bg-white rounded-t-lg">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full p-2"> {/*⭐ Number of tabs is here*/}
-
-                {/* 🔥 NEW: Social Media Request Tab */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full p-2">
                 <TabsTrigger
                   value="social-media-request"
                   className="w-full data-[state=active]:border-b-2 data-[state=active]:border-accent-gold 
-                            data-[state=active]:hover:bg-gray-100 data-[state=active]:hover:text-primary-dark 
-                            hover:bg-primary-light hover:text-white transition-colors flex flex-col items-start 
-                            p-4 gap-2 rounded-lg"
+                  data-[state=active]:hover:bg-gray-100 data-[state=active]:hover:text-primary-dark 
+                  hover:bg-primary-light hover:text-white transition-colors flex flex-col items-start 
+                  p-4 gap-2 rounded-lg"
                 >
                   <div className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
@@ -186,11 +202,12 @@ export default function GenerateInquiries() {
                   <p className="text-sm text-left">Submit social media post requests</p>
                 </TabsTrigger>
 
-
-
                 <TabsTrigger
                   value="marketing-assets"
-                  className="w-full data-[state=active]:border-b-2 data-[state=active]:border-accent-gold data-[state=active]:hover:bg-gray-100 data-[state=active]:hover:text-primary-dark hover:bg-primary-light hover:text-white transition-colors flex flex-col items-start p-4 gap-2 rounded-lg"
+                  className="w-full data-[state=active]:border-b-2 data-[state=active]:border-accent-gold 
+                  data-[state=active]:hover:bg-gray-100 data-[state=active]:hover:text-primary-dark 
+                  hover:bg-primary-light hover:text-white transition-colors flex flex-col items-start 
+                  p-4 gap-2 rounded-lg"
                 >
                   <div className="flex items-center gap-2">
                     <Download className="h-5 w-5" />
@@ -201,7 +218,10 @@ export default function GenerateInquiries() {
 
                 <TabsTrigger
                   value="lead-alerts"
-                  className="w-full data-[state=active]:border-b-2 data-[state=active]:border-accent-gold data-[state=active]:hover:bg-gray-100 data-[state=active]:hover:text-primary-dark hover:bg-primary-light hover:text-white transition-colors flex flex-col items-start p-4 gap-2 rounded-lg"
+                  className="w-full data-[state=active]:border-b-2 data-[state=active]:border-accent-gold 
+                  data-[state=active]:hover:bg-gray-100 data-[state=active]:hover:text-primary-dark 
+                  hover:bg-primary-light hover:text-white transition-colors flex flex-col items-start 
+                  p-4 gap-2 rounded-lg"
                 >
                   <div className="flex items-center gap-2">
                     <Bell className="h-5 w-5" />
@@ -220,18 +240,13 @@ export default function GenerateInquiries() {
               <p className="text-primary-medium mb-6">Submit a request to feature one of your listings on social media</p>
 
               <Form {...socialMediaForm}>
-                <form 
-                  onSubmit={socialMediaForm.handleSubmit(
-                    onSubmitSocialMedia, 
-                    () => setHasSubmitAttempt(true) // 🔥 Set error flag when validation fails
-                  )} 
+                <form
+                  onSubmit={socialMediaForm.handleSubmit(onSubmitSocialMedia, () => setHasSubmitAttempt(true))}
                   className="space-y-6 max-w-wide"
                 >
-                  
-                  {/* Agent Information */}
+                  {/* Agent Info */}
                   <div className="space-y-4">
-                    <div className="space-y-2  max-w-md">
-
+                    <div className="space-y-2 max-w-md">
                       <AgentSelect
                         value={socialMediaForm.watch("agentRecordId")}
                         onChange={(id, agent) => {
@@ -243,10 +258,10 @@ export default function GenerateInquiries() {
                         }}
                         error={socialMediaForm.formState.errors.agentName?.message}
                       />
-
-
                       {socialMediaForm.formState.errors.agentName && (
-                        <p className="text-sm text-red-500">{socialMediaForm.formState.errors.agentName.message}</p>
+                        <p className="text-sm text-red-500">
+                          {socialMediaForm.formState.errors.agentName.message}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -254,13 +269,18 @@ export default function GenerateInquiries() {
                   {/* Listing Link */}
                   <div className="space-y-4">
                     <Label htmlFor="propertyLink">Listing Link *</Label>
-                    <Input {...socialMediaForm.register("propertyLink")} placeholder="Enter a link to the listing being featured" />
+                    <Input
+                      {...socialMediaForm.register("propertyLink")}
+                      placeholder="Enter a link to the listing being featured"
+                    />
                     {socialMediaForm.formState.errors.propertyLink && (
-                      <p className="text-sm text-red-500">{socialMediaForm.formState.errors.propertyLink.message}</p>
+                      <p className="text-sm text-red-500">
+                        {socialMediaForm.formState.errors.propertyLink.message}
+                      </p>
                     )}
                   </div>
 
-                  {/* Additional Notes Field */}
+                  {/* Additional Notes */}
                   <div className="space-y-4">
                     <Label htmlFor="additionalNotes">Additional Notes</Label>
                     <Textarea
@@ -270,37 +290,27 @@ export default function GenerateInquiries() {
                     />
                   </div>
 
-                  {/* Submit button */}
+                  {/* Submit */}
                   <div className="flex justify-end items-center gap-4">
-                    {/* 🔥 Show error message when required fields are missing */}
                     {hasSubmitAttempt && !socialMediaForm.formState.isValid && (
                       <p className="text-red-500 text-sm font-medium flex items-center">
                         ⚠️ Please fill in all required fields.
                       </p>
                     )}
-
-                    {/* ✅ Button stays aligned to the right */}
-                    <Button 
+                    <Button
                       type="submit"
                       className="w-full md:w-auto bg-accent-gold hover:bg-accent-gold-light text-primary-dark"
                       disabled={isSubmitting}
                     >
-                      {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                      {isSubmitting ? "Submitting..." : "Submit Request"}
                     </Button>
                   </div>
-
-
-
                 </form>
               </Form>
             </div>
           </TabsContent>
 
-
-
-
-
-          {/* Lead-Gen Assets Tab */}
+          {/* Marketing Assets Tab */}
           <TabsContent value="marketing-assets" className="bg-white rounded-lg shadow-lg">
             <div className="p-6">
               <div className="mb-6">
@@ -310,12 +320,10 @@ export default function GenerateInquiries() {
                 </p>
               </div>
 
-              {/* Generic Lead-Gen Assets */}
+              {/* Generic lead-gen assets (always shown) */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <Card className="p-6 hover:shadow-lg transition-shadow flex flex-col h-full">
-                  <h3 className="text-lg font-medium mb-2 text-primary-dark">
-                    Property Pitch Deck
-                  </h3>
+                  <h3 className="text-lg font-medium mb-2 text-primary-dark">Property Pitch Deck</h3>
                   <p className="text-sm text-gray-600 mb-4 flex-grow">
                     Professional presentation template for property pitches
                   </p>
@@ -332,9 +340,7 @@ export default function GenerateInquiries() {
                 </Card>
 
                 <Card className="p-6 hover:shadow-lg transition-shadow flex flex-col h-full">
-                  <h3 className="text-lg font-medium mb-2 text-primary-dark">
-                    Social Media Kit
-                  </h3>
+                  <h3 className="text-lg font-medium mb-2 text-primary-dark">Social Media Kit</h3>
                   <p className="text-sm text-gray-600 mb-4 flex-grow">
                     Templates and graphics for social media marketing
                   </p>
@@ -352,7 +358,7 @@ export default function GenerateInquiries() {
 
                 <Card className="p-6 hover:shadow-lg transition-shadow flex flex-col h-full">
                   <h3 className="text-lg font-medium mb-2 text-primary-dark">
-                  Luxury Living Costa Rica Magazine
+                    Luxury Living Costa Rica Magazine
                   </h3>
                   <p className="text-sm text-gray-600 mb-4 flex-grow">
                     Our exclusive magazine featuring luxury properties and lifestyle articles
@@ -369,37 +375,56 @@ export default function GenerateInquiries() {
                   </Button>
                 </Card>
               </div>
-              </div>
 
-
-              {/* Personal Files Section */}
-              <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+              {/* Personal Files -> only loaded if user clicked this tab */}
+              <div className="bg-white rounded-xl shadow-lg p-8 mt-8">
                 <h2 className="text-xl font-bold mb-2">Your Personal Files</h2>
                 <p className="text-primary-medium mb-6">
                   Access agent-specific marketing assets
                 </p>
                 {error && <div className="text-red-500 mb-4">{error}</div>}
-                {loading ? (
-                  <p className="text-gray-600">Fetching files...</p> // Show loading text
-                ) : personalFiles.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {personalFiles.map((file) => (
-                      <div key={file.id} className="file-card bg-white rounded-lg shadow-lg p-4 hover:shadow-xl transition-shadow">
-                        {file.thumbnailLink && (
-                          <img src={file.thumbnailLink} alt={file.name} className="w-full h-48 object-cover rounded-lg mb-4" />
-                        )}
-                        <h3 className="text-lg font-semibold text-primary-dark mb-2">{file.name}</h3>
-                        <p className="text-sm text-gray-600 mb-4 flex-grow">Last modified: {new Date(file.modifiedTime).toLocaleDateString()}</p>
-                        <a href={file.webViewLink} target="_blank" rel="noopener noreferrer" className="text-primary-dark hover:underline">
-                          Open in Drive
-                        </a>
-                      </div>
-                    ))}
-                  </div>
+                {loadingDrive ? (
+                  <p className="text-gray-600">Fetching files...</p>
                 ) : (
-                  <p>No files found.</p>
+                  <>
+                    {personalFiles.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {personalFiles.map((file) => (
+                          <div
+                            key={file.id}
+                            className="file-card bg-white rounded-lg shadow-lg p-4 hover:shadow-xl transition-shadow"
+                          >
+                            {file.thumbnailLink && (
+                              <img
+                                src={file.thumbnailLink}
+                                alt={file.name}
+                                className="w-full h-48 object-cover rounded-lg mb-4"
+                              />
+                            )}
+                            <h3 className="text-lg font-semibold text-primary-dark mb-2">
+                              {file.name}
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-4 flex-grow">
+                              Last modified: {new Date(file.modifiedTime).toLocaleDateString()}
+                            </p>
+                            <a
+                              href={file.webViewLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary-dark hover:underline"
+                            >
+                              Open in Drive
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No personal files found.</p>
+                    )}
+                  </>
                 )}
               </div>
+            </div>
           </TabsContent>
 
           {/* Lead Alerts Tab */}
@@ -417,14 +442,8 @@ export default function GenerateInquiries() {
                     Notification Settings
                   </h3>
                   <p className="text-sm text-gray-600 mb-4 flex-grow">
-                    This feature is coming soon. You will be able to:
+                    This feature is coming soon...
                   </p>
-                  <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
-                    <li>Set up email notifications for new leads</li>
-                    <li>Configure in-app notification preferences</li>
-                    <li>Set quiet hours and working schedule</li>
-                    <li>Customize notification urgency levels</li>
-                  </ul>
                 </Card>
               </div>
             </div>
@@ -432,9 +451,10 @@ export default function GenerateInquiries() {
         </Tabs>
       </div>
 
+      {/* Success Modal */}
       <Dialog.Root open={showSuccessModal} onOpenChange={setShowSuccessModal}>
         <Dialog.Portal>
-          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-[100]"> 
+          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-[100]">
             <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-lg shadow-lg w-96">
               <div className="flex justify-between items-center">
                 <Dialog.Title className="text-xl font-semibold">Success!</Dialog.Title>
@@ -444,7 +464,9 @@ export default function GenerateInquiries() {
                   </button>
                 </Dialog.Close>
               </div>
-              <p className="text-gray-700 mt-2">Your social media post request was submitted successfully.</p>
+              <p className="text-gray-700 mt-2">
+                Your social media post request was submitted successfully.
+              </p>
               <Dialog.Close asChild>
                 <button className="mt-4 w-full bg-accent-gold hover:bg-accent-gold-light text-primary-dark font-semibold py-2 rounded">
                   OK
@@ -455,12 +477,15 @@ export default function GenerateInquiries() {
         </Dialog.Portal>
       </Dialog.Root>
 
+      {/* Error Modal */}
       <Dialog.Root open={showErrorModal} onOpenChange={setShowErrorModal}>
         <Dialog.Portal>
           <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-[100]">
             <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-lg shadow-lg w-96">
               <div className="flex justify-between items-center">
-                <Dialog.Title className="text-xl font-semibold text-red-600">Error</Dialog.Title>
+                <Dialog.Title className="text-xl font-semibold text-red-600">
+                  Error
+                </Dialog.Title>
                 <Dialog.Close asChild>
                   <button className="text-gray-400 hover:text-gray-600">
                     <X className="w-5 h-5" />
@@ -477,11 +502,6 @@ export default function GenerateInquiries() {
           </div>
         </Dialog.Portal>
       </Dialog.Root>
-
-
-
-
     </main>
   );
 }
-
