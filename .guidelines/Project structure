@@ -7,12 +7,12 @@ real-estate-command-center/
 ├── app/                         # Next.js App Router pages
 │   ├── api/                     # API routes
 │   ├── (auth)/                  # Authentication pages
-│   ├── metrics/                 # Dashboard pages
+│   ├── metrics/                 # Metrics pages
 │   ├── list-properties/         # List Properties module pages
 │   ├── sell-properties/         # Sell Properties module pages
 │   ├── marketing/               # Marketing module pages
 │   ├── layout.tsx               # Root layout
-│   ├── page.tsx                 # Homepage
+│   ├── page.tsx                 # Homepage dashbaord
 │   └── providers.tsx            # Global providers
 ├── components/                  # Reusable UI components
 ├── lib/                         # Business logic and utilities

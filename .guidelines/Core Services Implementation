@@ -1,0 +1,271 @@
+# Comprehensive Guide to Developing Core Services for the Real Estate Command Center
+
+## Introduction
+
+The foundation of your Real Estate Command Center (RECC) rests on its core services—the shared infrastructure that supports all modules and tools. By thoroughly developing these services first, you'll create a robust and scalable application architecture that will simplify module development and maintenance.
+
+This guide will walk you through the entire process of developing core services, from initial planning to testing and documentation, with practical code examples and implementation strategies.
+
+
+### Step 0: Service Identification and Dependency Mapping
+
+Begin by creating a comprehensive map of all core services and their interdependencies. Based on your project files, I've identified these key services:
+
+1. **Authentication and Authorization**
+   - Clerk integration
+   - Permission management
+   - Role-based access control
+
+2. **Data Management**
+   - Airtable integration
+   - Redis caching
+   - Data transformation utilities
+
+3. **Media Management**
+   - BunnyCDN storage zones
+   - Asset processing and optimization
+   - Media metadata handling
+
+4. **Communication Services**
+   - Email (SendGrid)
+   - Notification system
+   - Client portal integration
+
+5. **Integration Services**
+   - WordPress synchronization
+   - Google Calendar/scheduling
+   - Document management
+
+Below is a **step-by-step implementation plan** for creating your Core Services, focusing on **what** to build and **how** to connect the pieces without listing out all the code in full. Use these steps as a blueprint to organize and implement your services consistently.
+
+---
+
+## 1. Project Structure & Organization
+
+1. **Create a `lib/core-services` Folder**  
+   - This will house each of your service folders (e.g., `auth`, `airtable`, `cache`, `dam`, `email`, `notifications`, etc.).  
+   - Keep related utilities (like `bunnyConfig` for DAM or `permissionService` for Auth) in or near these folders.
+
+2. **Create a `types/core-services` Folder**  
+   - Store your TypeScript interfaces or type definitions for each service here (e.g., `airtable.ts`, `auth.ts`, `cache.ts`, etc.).  
+   - This makes it easier for other parts of the app to consume service methods consistently.
+
+3. **Set Up a `service-registry.ts`**  
+   - In `lib/core-services/service-registry.ts`, define a class (e.g. `ServiceRegistry`) that:  
+     - Keeps track of each service.  
+     - Understands dependencies (e.g., Airtable depends on Cache).  
+     - Has an `initialize` method that recursively initializes each service’s dependencies.  
+     - Provides a `getService` method to retrieve or auto-initialize the requested service.
+
+---
+
+## 2. Service Registry: The Glue Layer
+
+**Goal:** Implement a single place to create, initialize, and retrieve services.
+
+1. **Map Out Dependencies**  
+   - In the registry, define an internal mapping of which service depends on which (for instance, `"airtable" -> ["cache"]`).  
+   - Consider minimal or no dependencies for the `cache` and `auth` services.  
+   - Be sure to list new services like `notifications` if they rely on `airtable` and `cache`.
+
+2. **Initialization Logic**  
+   - For each service, call its `initialize()` method if it exists (async or otherwise).  
+   - Only create a new instance of a service once its dependencies are fully initialized.
+
+3. **Singleton Export**  
+   - Export a single instance (e.g. `export const serviceRegistry = new ServiceRegistry();`).  
+   - Optionally create helper functions (like `initializeModuleServices`) that ensure any module can initialize only the services it needs.
+
+---
+
+## 3. Authentication & Authorization Service
+
+**Goal:** Provide user authentication (via Clerk) and permission checks (role-based) in one place.
+
+1. **Create an Interface** (in `types/core-services/auth.ts`)  
+   - Define the shape of your `User` object, `UserRole`, `Permission`, etc.
+
+2. **Build the Auth Class** (in `lib/core-services/auth/`)  
+   - Integrate with **Clerk** to get user info, session data, etc.  
+   - Provide a method like `getCurrentUser()` to retrieve the logged-in user.  
+   - Provide a method like `getUserRoles()` to merge roles from Clerk and Airtable (if you track roles in both).
+
+3. **Permission Checks**  
+   - Create a small “Permission Service” or utility that:
+     - Knows all possible permissions (e.g., `list-properties:create`).  
+     - Maps roles to the specific permissions they hold (`ROLE_PERMISSIONS`).  
+   - Expose methods such as `hasPermission(permissionKey, userId?)` or `hasModuleAccess(moduleKey, userId?)` to handle your role-based logic.
+
+4. **Middleware or Hooks**  
+   - (Optional) Create a function like `protectRoute()` to redirect if unauthorized.  
+   - Provide a React hook like `usePermission()` to easily check permissions in components.
+
+---
+
+## 4. Data Management (Airtable + Cache)
+
+### 4A. Caching (Cache Service)
+
+1. **Decide on a Redis Provider**  
+   - In your case, you might use Upstash Redis or a similar managed solution.  
+   - Keep the client logic in a dedicated `cacheService.ts`.
+
+2. **Implement a `CacheService` Class**  
+   - Methods for `get`, `set`, `del`, `exists`, etc.  
+   - Optionally add helper methods for hashes, TTL, etc.  
+   - Handle errors gracefully—if Redis is offline, your main app logic should still keep running but skip caching.
+
+### 4B. Airtable Service
+
+1. **Create Airtable Interfaces**  
+   - E.g., `AirtableRecord`, `AirtableQueryOptions` to standardize how you query.
+
+2. **Implement `AirtableService`**  
+   - In `lib/core-services/airtable/`, create a class with methods for fetching records, creating/updating/deleting, etc.  
+   - For each operation (fetch, find, create, update, delete), handle optional caching by calling the **Cache Service**.  
+   - On successful create/update/delete, invalidate relevant cache entries so stale data isn’t returned.
+
+3. **Environment Variables**  
+   - Store your Airtable API key (`AIRTABLE_PAT`) and base/table IDs (`AIRTABLE_*_BASE_ID`) in `.env`.  
+   - Reference them in your service code for easy setup.
+
+---
+
+## 5. DAM (Digital Asset Management)
+
+**Goal:** Upload, store, and manage media (images, documents, etc.) with BunnyCDN and store metadata in Airtable.
+
+1. **BunnyCDN Config**  
+   - Put your Bunny Storage credentials (`name` of the zone, `password`, `cdnUrl`) in a helper file (e.g. `bunnyConfig.ts`).  
+   - This helper file provides a function to get zone settings. 
+
+2. **DAM Service Class**  
+   - `listFiles(zone, folder)`: Lists files in a folder.  
+   - `uploadFile(options)`: Uploads a file to the chosen zone and folder, then logs metadata to Airtable.  
+   - `deleteFile(zone, path)`: Deletes a file from BunnyCDN and removes the metadata from Airtable.  
+
+3. **Metadata Handling**  
+   - When uploading, generate a unique identifier if needed (e.g., short UUID).  
+   - Store data (URL, type, size, path, etc.) in an Airtable table specifically for “media assets.”
+
+4. **Optional Transforms**  
+   - Keep an optional “transformImage(url, options)” if you use a third-party service to resize images or do advanced transformations.  
+   - Start by returning the original URL as a placeholder, to be expanded later if needed.
+
+---
+
+## 6. Email Service
+
+**Goal:** Send emails with SendGrid, log them in Airtable, and optionally retrieve template details from Airtable.
+
+1. **Core Methods**  
+   - `sendEmail(options)`: For straightforward email sends (to, from, subject, HTML, etc.).  
+   - `sendTemplateEmail(options)`: For using dynamic data with a SendGrid template ID.  
+   - Both methods can log results in Airtable if you want a historical record (fields might include `to`, `subject`, `sentAt`, etc.).
+
+2. **Attach Files** (Optional)  
+   - If attachments exist, encode them (base64, etc.) and pass them along to SendGrid’s API.
+
+3. **Template Management**  
+   - If you store templates in Airtable (e.g., you keep them documented with a “SendGrid Template ID” and custom fields), you can add a method like `getEmailTemplates()` to fetch them.
+
+---
+
+## 7. Notification Service
+
+**Goal:** Provide a central place for in-app alerts and notifications (e.g., “Property updated,” “New lead,” etc.).
+
+1. **Schema in Airtable**  
+   - Create a “notifications” table with fields like `User ID`, `Type` (info, success, warning, etc.), `Status` (unread, read), `Priority`, etc.
+
+2. **NotificationService**  
+   - `createNotification(options)`: Writes a new notification to Airtable and caches it.  
+   - `getUserNotifications(userId, filters)`: Tries cache first; if empty, queries Airtable.  
+   - `markAsRead(userId, notificationIds)`: Updates the relevant records in Airtable and the cache.  
+   - `deleteNotifications(userId, notificationIds)`: Removes them from Airtable, updates the cache.  
+   - `getUnreadCount(userId)`: Quick way to see how many notifications are unread.
+
+3. **Front-End Hooks**  
+   - E.g., `useNotifications(userId)` to handle listing, creating, marking as read, etc.  
+   - Can incorporate polling (like once every minute) to refresh notifications automatically.
+
+---
+
+## 8. React Hooks & Client Integration
+
+1. **Create a Hook per Service**  
+   - `useAuth()`: Loads current user info from the Auth service.  
+   - `usePermission(permissionKey)`: Checks if the user can do a specific action.  
+   - `useAirtableQuery(baseId, tableId, options)`: Fetch and auto-poll data from Airtable.  
+   - `useMedia()`: Upload or delete files (DAM).  
+   - `useNotifications(userId)`: Retrieve or create notifications.
+
+2. **Ensure Each Hook**  
+   - Calls `serviceRegistry.getService(...)` inside a `useEffect` or function to do the actual work.  
+   - Manages `isLoading` and `error` states for your components.
+
+3. **UI Components**  
+   - Build small, modular components for typical tasks (e.g., `MediaUploader`, `NotificationCenter`).  
+   - Rely on the hooks you created so the components are lightweight—**all logic** remains in the service layer.
+
+---
+
+## 9. Testing & Quality Assurance
+
+1. **Unit Tests**  
+   - For each service, create a test file with scenarios covering success, failure, invalid inputs, etc.  
+   - Mock out external dependencies (e.g., Redis, Airtable, BunnyCDN, Clerk) so your tests only validate your logic.
+
+2. **Integration Tests**  
+   - Pick pairs of services that frequently interact (e.g., Auth + Airtable, DAM + Airtable).  
+   - Confirm that data or user info flows properly from one service to the other.
+
+3. **API Tests** (If You Expose HTTP Endpoints)  
+   - When you create Next.js route handlers (e.g., `/api/notifications`), test those handlers to ensure they properly invoke the Notification Service and return correct responses.
+
+4. **End-to-End** (Optional)  
+   - If you have a stable environment, consider an E2E test using something like Playwright or Cypress to cover real user flows (logging in, uploading a file, creating a notification, etc.).
+
+---
+
+## 10. Documentation Strategy
+
+1. **Dedicated Docs Folder**  
+   - Maintain a `docs/` folder in your repo with markdown files describing each service and how to use it.  
+
+2. **Service-Specific README**  
+   - Optionally place a short README in each service folder summarizing what it does, environment variables needed, and example usage.
+
+3. **Code Comments**  
+   - Inline doc comments in your TypeScript code (especially for public methods) help future developers understand parameters, return values, and usage notes.
+
+---
+
+## 11. Rollout & Maintenance
+
+1. **Incremental Rollout**  
+   - Start with the simplest services (e.g., Cache, Auth) and build up to more complex ones (DAM, Email, Notifications).  
+   - Gradually integrate them into your front-end pages or modules.
+
+2. **Logging & Error Handling**  
+   - Decide on a logging approach (e.g., `console.error`, a logging library).  
+   - Handle errors gracefully in each service (log them, possibly surface them in your UI hooks).
+
+3. **Ongoing Maintenance**  
+   - Keep your service interfaces stable (i.e., don’t break method signatures) as modules rely on them.  
+   - If you need major changes, version the service or coordinate with dependent modules.
+
+---
+
+## Putting It All Together
+
+By following this plan:
+
+- You’ll end up with **loosely coupled** services, each with a clear responsibility.  
+- The **Service Registry** ensures everything is initialized in the correct order.  
+- The **Cache Service** improves performance by reducing redundant Airtable calls.  
+- The **DAM Service** centralizes your media handling with consistent metadata.  
+- The **Email & Notification Services** give you a standard approach to communications.  
+- **Auth** ensures consistent user/permission checks across the board.  
+
+This high-level plan should help you implement or refine each piece of your core infrastructure in a systematic, maintainable way—without requiring you to rewrite large code samples.

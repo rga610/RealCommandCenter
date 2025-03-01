@@ -114,3 +114,170 @@ When implementing a new module, consider how it should integrate with these core
 3. **Are there any performance considerations when integrating with these services?**
 4. **What error handling and fallback strategies should be implemented?**
 5. **How will user permissions affect access to these services within the module?**
+
+
+
+---
+
+Below is a **high-level** explanation of how our core services fit together and how data flows among them. This focuses on **the “big picture”** rather than the detailed code. Use it as an architectural reference for understanding how all the pieces interconnect in our Real Estate Command Center (RECC). 
+
+
+## 1. Overview of the Core Architecture
+
+At the heart of our system is the **Service Registry**, which initializes and manages all our core services. Each service has a clearly defined responsibility and may depend on other services. Here’s a concise map of what each service does and how they rely on one another:
+
+1. **Service Registry**  
+   - Acts as the “single source of truth” for creating, initializing, and retrieving any core service.  
+   - Understands which services depend on each other (e.g., Airtable depends on Cache, DAM depends on Airtable, etc.).  
+   - Makes sure everything starts up in the right order.
+
+2. **Auth (Authentication & Authorization) Service**  
+   - Integrates with **Clerk** for sign-in/sign-up, user sessions, and basic user data.  
+   - Uses **Airtable** to retrieve additional role info and permissions (if they’re stored there).  
+   - Provides a unified way to check if a user can access certain parts of the system (role-based access control, permission checks).
+
+3. **Airtable (Data) Service**  
+   - Connects to Airtable for storing and retrieving data across various tables.  
+   - Uses the **Cache Service** (Redis) to speed up data retrieval (caching queries, avoiding repeated calls to Airtable).
+
+4. **DAM (Digital Asset Management) Service**  
+   - Handles file uploads, listing, and deletion via **BunnyCDN** storage.  
+   - Stores and retrieves asset metadata in **Airtable** (e.g. asset name, storage path, etc.).  
+   - Optionally can tie into external transformations (like Cloudinary) if image resizing or similar is needed.  
+
+5. **Email Service**  
+   - Communicates with **SendGrid** to send and track emails.  
+   - Logs email activity to **Airtable** (if you want that audit trail).  
+   - Optionally fetches email templates from Airtable and merges dynamic data (if you store our email templates there).
+
+6. **Notification Service**  
+   - Stores notifications in **Airtable**, uses the **Cache Service** for quick reads.  
+   - Creates, retrieves, marks read, or deletes in-app notifications.  
+   - Provides a straightforward interface for letting users know about new events, property changes, etc.
+
+7. **Integration Services**  
+   - These are not fully detailed in the code but mentioned in our outline. They’d include WordPress synchronization, Google Calendar integration, document management, etc.  
+   - All of them follow the same pattern: they can use the **Service Registry** to get whatever they need (e.g., Auth for user info, Airtable for data, Cache for performance).
+
+---
+
+## 2. How the Services Depend on One Another
+
+Because you have multiple services that rely on each other, you define “who depends on what” in the **Service Registry** so it can load them in the correct sequence. For example:
+
+- **Cache** is a lower-level service. It generally has no dependencies—other services depend on *it* to store data or speed up retrieval.  
+- **Airtable** depends on **Cache** to handle caching.  
+- **DAM** depends on **Airtable** (for storing metadata) and, indirectly, on **Cache** (through Airtable).  
+- **Email** depends on **Airtable** for logging email records and retrieving templates.  
+- **Notifications** depends on both **Airtable** and **Cache**.  
+- **Auth** may rely on both **Airtable** (for role definitions) and third-party services like **Clerk**.
+
+This dependency knowledge is hard-coded in the **Service Registry** so the framework always knows:
+
+1. If you ask for the DAM service, it will automatically initialize the Cache service and the Airtable service **before**.  
+2. If you ask for the Email service, it will also make sure Airtable is available first.  
+3. And so on.
+
+---
+
+## 3. Data Flow & High-Level Responsibilities
+
+Below is a simple overview of how data flows among the services, focusing on responsibilities rather than code:
+
+1. **Auth Flow**  
+   - A user authenticates with Clerk.  
+   - Clerk returns a user ID and basic profile info.  
+   - The Auth Service checks Airtable to load additional roles/permissions for that user.  
+   - When a feature (e.g., “Delete Property”) is requested, the Auth Service verifies the user’s permission.  
+
+2. **Data (Airtable + Cache) Flow**  
+   - When our UI needs data (e.g., a list of “Active Properties”), the Airtable Service first checks the **Cache** to see if the data is already stored.  
+   - If cached, it returns immediately. If not, it queries Airtable, transforms the response, and then puts the result into the cache.  
+   - Updates/creates/deletes in Airtable automatically clear any relevant cache entries so everything stays in sync.
+
+3. **Digital Asset (DAM) Flow**  
+   - A user uploads media (images, documents, etc.).  
+   - The DAM Service picks the right BunnyCDN storage zone and sends the file there.  
+   - It simultaneously writes the file metadata (URLs, thumbnail links, file size, etc.) into Airtable.  
+   - If the user needs that data later (like listing all images in a folder), the DAM Service can quickly fetch it from Bunny and/or read metadata from Airtable if needed.
+
+4. **Email Flow**  
+   - A user or system action triggers an email (e.g. “Property Inquiry” or “Welcome Message”).  
+   - The Email Service uses SendGrid to send the email.  
+   - Once sent, the Email Service logs the details into Airtable (to, from, subject, date sent, etc.).  
+   - That log can be displayed in the UI if you want to show email history.
+
+5. **Notifications Flow**  
+   - Something happens in the system (e.g. property status changed to “Under Contract”), and you want to notify certain users.  
+   - The Notification Service creates a new record in Airtable, then caches it for quick retrieval.  
+   - On the front end, our React hooks call the Notification Service, which fetches those notifications either from cache or from Airtable.  
+   - The moment a user sees or clicks on the notifications, the service updates them to “read” in Airtable and clears the cache as needed.
+
+---
+
+## 4. Consuming the Services (Frontend Hooks + Registry)
+
+To keep our front-end code simpler, you use React hooks that call into these core services. Each hook:
+
+- Retrieves the appropriate service from the **Service Registry**.  
+- Wraps the service calls in a friendly React interface (loading states, error states, auto-refresh, etc.).  
+
+For example:
+
+- **useAuth / usePermission**  
+  - Fetches the Auth Service and checks if the current user is allowed to do X, Y, or Z.
+- **useAirtableQuery**  
+  - Fetches data from a given Airtable base/table, can optionally poll or skip caching.  
+- **useMedia**  
+  - Uploading/deleting files in the DAM Service.  
+- **useNotifications**  
+  - Listing/creating/marking as read from the Notification Service.
+
+By using hooks, any part of our React application can easily grab the core service’s functionality. All the complexity (like hitting Airtable, clearing caches, or talking to BunnyCDN) is hidden behind well-defined methods.
+
+---
+
+## 5. Testing & Validation
+
+Finally, because you have multiple moving parts:
+
+- **Unit Tests**: Each service is tested in isolation. Mocks ensure that the Auth Service can be tested without truly hitting Clerk, and so on.  
+- **Integration Tests**: Test how services work together (Auth + Airtable).  
+- **API Tests**: If you expose certain endpoints, you have tests ensuring the endpoints correctly rely on their respective services.
+
+This layered approach ensures:
+1. Each service is correct by itself.  
+2. They still work properly when chained together.  
+3. The final external API behaves as expected.
+
+---
+
+## 6. Putting It All Together
+
+1. **Initialize the Services**:  
+   - In our Next.js (or Node) application, load the **Service Registry** and initialize whichever core services a module needs.  
+
+2. **Use Hooks in Components**:  
+   - For any UI page/feature, you call the relevant React hook (like `useAirtableQuery` or `useMedia`) instead of manually writing fetch calls.  
+
+3. **Services Do the Heavy Lifting**:  
+   - The hooks pass requests to the core services, which handle all logic: from authentication to caching to external API calls.  
+
+4. **Keep Everything in Sync**:  
+   - Whenever you create or update data in Airtable, the service automatically clears its own cache entries (if needed).  
+   - Whenever you upload an asset, the DAM Service also logs metadata in Airtable so there’s a single source of truth for our file info.  
+
+5. **Extend With Confidence**:  
+   - Because each service has a clear responsibility, you can add new features (like an SMS service or an advanced scheduling service) without breaking the existing architecture.  
+   - You’d simply add a new service (and new hooks, if needed) to the **Service Registry**, define any dependencies, and go from there.
+
+
+
+### Final Takeaway
+
+- **The Service Registry** is our backbone. 
+- **Each core service** (Auth, Airtable, DAM, Email, Notifications) focuses on a clear purpose but can collaborate by retrieving each other from the registry.  
+- **Airtable + Cache** form the central data layer.  
+- **Hooks** are the front-end connector that hide the complexity and provide a clean, reactive interface.
+
+By laying out our services in this way, the app remains **modular, easier to scale, and simpler to maintain**.
