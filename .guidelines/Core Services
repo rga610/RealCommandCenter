@@ -4,105 +4,77 @@ The following core services form the foundation of our application architecture,
 
 ## 1. Digital Asset Management (DAM)
 **Purpose**: Centralized system for storing, organizing, and delivering media assets using BunnyCDN infrastructure.
-
 **Importance**: Real estate marketing relies heavily on high-quality visual assets. This service ensures consistent handling of property photos, videos, floor plans, and marketing materials across all modules.
-
 **Cross-module usage**: Used in listing creation, marketing materials, client reports, and property presentations.
 
 ## 2. Document Management System
 **Purpose**: Secure repository for handling legal and business documents with appropriate access controls and sharing capabilities.
-
 **Importance**: Maintains compliance, enables collaboration, and provides audit trails for all document-related activities.
-
 **Key features**: E-signature integration, secure client sharing, version control, and expiration management.
 
 ## 3. Airtable Integration Service
 **Purpose**: Centralized data access layer connecting the application to Airtable as the primary data source.
-
 **Importance**: Provides a single source of truth for all business data including listings, leads, agent information, and operational metrics.
-
 **Cross-module usage**: Every module relies on this service for data retrieval and manipulation.
 
 ## 4. Redis Caching Service (Upstash)
 **Purpose**: Distributed in-memory data store using Upstash-Redis for optimizing performance, reducing API load, and improving responsiveness throughout the application.
-
 **Importance**: Dramatically enhances application performance by minimizing expensive API calls to Airtable, reduces costs associated with external service usage, and provides critical infrastructure for real-time features.
-
 **Cross-module usage**: Every module leverages caching for different purposes - property listings use it for search results, dashboards for analytics calculations, authentication for session management, and AI features for context preservation. The service implements consistent strategies for cache invalidation, TTL management, and memory optimization across all modules.
 
 ## 5. Email Communication System (Sendgrid)
 **Purpose**: Comprehensive service using Sendgrid for composing, sending, and tracking both individual and bulk emails.
-
 **Importance**: Enables consistent client communication, marketing campaigns, and automated notifications.
-
 **Key features**: Branded templates, scheduling, delivery analytics, A/B testing, and compliance with email regulations.
 
 ## 6. WordPress Integration Service
 **Purpose**: Bidirectional synchronization between the application and the public-facing WordPress website.
-
 **Importance**: Ensures consistency between internal and public-facing property information while eliminating duplicate data entry.
 
 ## 7. Notification Service
 **Purpose**: Centralized system for generating, delivering, and tracking in-app and external notifications.
-
 **Importance**: Keeps users informed of important events and updates in real-time.
-
 **Cross-module usage**: All modules generate notifications for various events (new leads, status changes, etc.).
 
 ## 8. Scheduling and Calendar Service
 **Purpose**: Unified system for managing appointments, property viewings, and deadlines.
-
 **Importance**: Coordinates activities between agents, clients, and other stakeholders.
-
 **Integration points**: Google Calendar, Outlook, and other popular calendar platforms.
 
 ## 9. Analytics and Reporting Service
 **Purpose**: Collection, analysis, and visualization of business metrics and performance data.
-
 **Importance**: Provides insights for data-driven decision making across all business functions.
-
 **Cross-module usage**: Every module generates performance data that feeds into dashboards and reports.
 
 ## 10. Geolocation and Mapping Service
 **Purpose**: Integration of location data, maps, and spatial analysis tools.
-
 **Importance**: Enhances property context with location intelligence, which is crucial for real estate valuation.
-
 **Applications**: Property location visualization, proximity analysis, market area definition.
 
 ## 11. Client Portal Service
 **Purpose**: Secure interface for client interactions with the agency.
-
 **Importance**: Enhances client experience through self-service capabilities and transparent communication.
-
 **Features**: Document access, communication history, property status tracking.
 
 ## 12. Search and Filtering Service
 **Purpose**: Advanced search functionality across all system data.
-
 **Importance**: Enables quick access to relevant information throughout the application.
-
 **Implementation**: Unified search interface with context-aware results and filtering.
 
 ## 13. Authentication and Authorization Service
 **Purpose**: Manages user identity, access control, and permissions using Clerk and Airtable user data.
-
 **Importance**: Enforces security boundaries and ensures appropriate access to functionality and data.
-
 **Integration**: Combines Clerk metadata with role definitions stored in Airtable for fine-grained permissions.
 
 ## 14. AI Agent Service
 **Purpose**: Intelligent assistant system that interacts with users through a persistent chat widget across the entire application.
-
 **Importance**: Enhances user productivity by providing contextual help, automating routine tasks, and offering guidance on module usage.
-
 **Key capabilities**: 
 - Module and tool discovery and navigation assistance
 - Context-aware help and documentation
 - Workflow automation and task completion
 - Natural language data querying and reporting
 - Proactive suggestions based on user behavior patterns
-
 **Security considerations**: AI agents operate within the user's permission boundaries, with strict access controls to sensitive operations and data.
 
 ## Considerations for Module Implementation

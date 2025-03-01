@@ -40,7 +40,7 @@ The application enables real estate agents to manage listings, buyer interaction
 - **Media Storage**: Bunny.net
 - **Advanced Media Transformation**: Cloudinary
 - **AI services**: OpenAI
-- **Web sraping**: Firecrawl
+- **Web scraping**: Firecrawl
 - **Email Communications**: SendGrid
 - **State Management**: React Context and SWR for data fetching
 
