@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { useFormContext, useFieldArray } from "react-hook-form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/default/input";
+import { Button } from "@/components/default/button";
 import { Trash2, Plus } from "lucide-react";
 import PricingSummary from "./PricingSummary";
 

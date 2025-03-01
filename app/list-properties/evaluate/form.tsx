@@ -2,7 +2,7 @@
 "use client";
 
 import { useFormContext } from "react-hook-form";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/default/input";
 
 export default function ListingForm() {
   const { register } = useFormContext(); // ✅ Now this will work

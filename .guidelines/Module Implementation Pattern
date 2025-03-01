@@ -1,0 +1,1033 @@
+# Comprehensive Module Implementation Pattern Guide
+
+## 1. Understanding the Module Hierarchy and Core Services
+
+### 1.1. Application Architecture Overview
+- **Platform Dashboard**: Main entry point showing overview and quick access
+- **Parent Modules**: Major business domains (e.g., Listing, Selling, Marketing)
+- **Child Modules**: Specific functional areas within domains 
+- **Tools**: Interactive components that perform specific functions
+- **Sub-tools**: Specialized sections within a tool for focused tasks
+- **Core Services**: Foundational capabilities shared across modules
+
+### 1.2. Define Module Boundaries and Service Dependencies
+- Map the module's position in the application hierarchy
+- Identify dependencies and interactions with other modules
+- Document which core services the module will leverage
+- Plan integration points with each required service
+
+### 1.3. Access Control Planning
+- Define required user roles and permissions for the module
+- Plan permission inheritance from parent to child modules
+- Design conditional UI rendering based on permissions
+- Consider how permissions affect access to core services
+- Plan integration with the Authentication and Authorization Service
+
+## 2. Module Structural Planning
+
+### 2.1. Domain Analysis
+- Document key business entities and workflows
+- Identify core use cases and user stories
+- Map to existing Airtable tables and fields via the Airtable Integration Service
+- Determine media asset requirements for the Digital Asset Management service
+- Identify document management needs for the Document Management System
+- Plan notification events for the Notification Service
+
+### 2.2. Module Component Architecture
+- Decide on parent/child module structure
+- Plan tool components and their relationships
+- Identify reusable components vs. custom implementations
+- Design state management approach
+- Plan AI Agent interactions for this module
+
+### 2.3. User Experience Planning
+- Create wireframes for key screens
+- Define navigation patterns between modules and tools
+- Plan error states and recovery flows
+- Design loading states and optimistic updates
+- Define analytics events to track through the Analytics Service
+
+## 3. Establishing Directory Structure
+
+### 3.1. Module Configuration
+```
+/app/lib/modules/modules-directory.ts  (Update with new module)
+```
+
+### 3.2. Types and Interfaces
+```
+/types/[module-name].ts
+/types/core-services/  (For service-specific types)
+```
+
+### 3.3. Module Services
+```
+/lib/modules/[module-name]/[module-name]Service.ts
+```
+
+### 3.4. Core Service Integration
+```
+/lib/modules/[module-name]/services/  (Module-specific service integrations)
+```
+
+### 3.5. API Routes
+```
+/app/api/[module-name]/route.ts
+```
+
+### 3.6. Module Components
+```
+/components/modules/[module-name]/[ComponentName].tsx
+/components/modules/[module-name]/tools/[ToolName].tsx
+```
+
+### 3.7. Page Components
+```
+/app/[parent-module]/page.tsx
+/app/[parent-module]/[child-module]/page.tsx
+```
+
+## 4. Implementing the Parent Module
+
+### 4.1. Update Module Directory
+Add the new module to the central modules configuration:
+
+```typescript
+// app/lib/modules/modules-directory.ts
+export const MODULES = {
+  // Existing modules...
+  newModule: {
+    name: "New Module Name",
+    path: "/new-module-path",
+    icon: SomeIcon,
+    requiredServices: ["airtable", "dam", "notifications"], // Indicate required core services
+  },
+};
+```
+
+### 4.2. Create Parent Module Page
+Leverage the reusable ParentModuleComponent pattern:
+
+```typescript
+// app/[parent-module]/page.tsx
+"use client";
+
+import ParentModule from "@/components/modules/ParentModuleComponent";
+import { relevantIcons } from "lucide-react";
+import { initCoreServices } from "@/lib/core-services/serviceLoader";
+
+const BASE_PATH = "/[parent-module]";
+
+export default function ParentModulePage() {
+  // Initialize required core services for this module
+  initCoreServices(MODULES.moduleKey.requiredServices);
+  
+  const childModules = [
+    {
+      href: `${BASE_PATH}/child-module-one`,
+      icon: <RelevantIcon className="w-8 h-8 text-primary-dark" />,
+      title: "Child Module One",
+      description: "Functional description for this child module",
+    },
+    // Additional child modules...
+  ];
+
+  return (
+    <ParentModule
+      moduleKey="moduleKeyFromDirectory"
+      childModules={childModules}
+      heading="Custom Heading" // Optional
+      description="Custom description" // Optional
+    />
+  );
+}
+```
+
+### 4.3. Define Access Control
+Add middleware or page-level checks for access control using the Authentication Service:
+
+```typescript
+// app/[parent-module]/layout.tsx
+import { checkAccess } from "@/lib/core-services/auth/accessControl";
+import { redirect } from "next/navigation";
+
+export default async function ParentModuleLayout({ children }) {
+  // Check if user has access to this parent module
+  const hasAccess = await checkAccess("modulePermission");
+  
+  if (!hasAccess) {
+    redirect("/unauthorized");
+  }
+  
+  return <>{children}</>;
+}
+```
+
+## 5. Implementing Child Modules
+
+### 5.1. Create Child Module Types
+Define the data models and interfaces:
+
+```typescript
+// types/[child-module].ts
+import { MediaAsset } from "@/types/core-services/dam";
+import { Document } from "@/types/core-services/documents";
+
+export interface EntityType {
+  id: string;
+  // Core properties...
+  media: MediaAsset[];
+  documents: Document[];
+  // Additional properties...
+}
+
+export type FormDataType = Omit<EntityType, 'id' | 'createdAt'>;
+```
+
+### 5.2. Create Module Service
+Implement business logic and integrate with core services:
+
+```typescript
+// lib/modules/[parent-module]/[child-module]Service.ts
+import { EntityType, FormDataType } from "@/types/[child-module]";
+import { airtableService } from "@/lib/core-services/airtable/airtableService";
+import { damService } from "@/lib/core-services/dam/damService";
+import { notificationService } from "@/lib/core-services/notifications/notificationService";
+import { emailService } from "@/lib/core-services/email/emailService";
+
+export async function fetchEntities(): Promise<EntityType[]> {
+  // Get data from Airtable using the Airtable Integration Service
+  const records = await airtableService.fetchRecords(
+    process.env.AIRTABLE_BASE_ID,
+    process.env.AIRTABLE_TABLE_ID
+  );
+  
+  // Process and return the records
+  return records.map(transformRecord);
+}
+
+export async function createEntity(data: FormDataType): Promise<EntityType> {
+  // Process media assets via DAM service
+  const processedMedia = await Promise.all(
+    data.media.map(media => damService.processAsset(media))
+  );
+  
+  // Prepare record for Airtable
+  const record = {
+    ...data,
+    media: processedMedia.map(m => m.id),
+  };
+  
+  // Create record in Airtable
+  const newRecord = await airtableService.createRecord(
+    process.env.AIRTABLE_BASE_ID,
+    process.env.AIRTABLE_TABLE_ID,
+    record
+  );
+  
+  // Send notifications using the Notification Service
+  await notificationService.notify({
+    type: "entity_created",
+    entityId: newRecord.id,
+    message: `New ${entityType} created: ${newRecord.title}`
+  });
+  
+  // Optional: Send email notification using Email Service
+  await emailService.sendTemplate({
+    template: "entity_created",
+    recipients: getRecipients(newRecord),
+    data: newRecord
+  });
+  
+  return transformRecord(newRecord);
+}
+
+// Additional service methods...
+```
+
+### 5.3. Create API Endpoints
+Enable data operations with core service integration:
+
+```typescript
+// app/api/[parent-module]/[child-module]/route.ts
+import { createEntity } from "@/lib/modules/[parent-module]/[child-module]Service";
+import { checkPermission } from "@/lib/core-services/auth/accessControl";
+import { analyticsService } from "@/lib/core-services/analytics/analyticsService";
+
+export async function POST(request: Request) {
+  // Check permissions using the Auth Service
+  if (!await checkPermission("create:entity")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { 
+      status: 403 
+    });
+  }
+
+  try {
+    // Process request
+    const data = await request.json();
+    const entity = await createEntity(data);
+    
+    // Track the event using Analytics Service
+    analyticsService.trackEvent("entity_created", {
+      module: "parentModule",
+      entityType: "entityType",
+      entityId: entity.id
+    });
+    
+    return new Response(JSON.stringify(entity), { 
+      status: 201 
+    });
+  } catch (error) {
+    console.error("Error creating entity:", error);
+    return new Response(JSON.stringify({ error: error.message }), { 
+      status: 500 
+    });
+  }
+}
+```
+
+### 5.4. Create Child Module Page
+Use the ChildModulePageTemplate pattern and integrate relevant core services:
+
+```typescript
+// app/[parent-module]/[child-module]/page.tsx
+"use client";
+
+import { MODULES } from "@/app/lib/modules/modules-directory";
+import ChildModulePageTemplate from "@/components/modules/ChildModuleComponent";
+import { RelevantIcons } from "lucide-react";
+import { useAIAgent } from "@/lib/core-services/ai/useAIAgent";
+
+// Import tool components
+import ToolOne from "@/components/modules/[parent-module]/tools/ToolOne";
+import ToolTwo from "@/components/modules/[parent-module]/tools/ToolTwo";
+
+export default function ChildModulePage() {
+  const parentModule = MODULES.parentModuleKey;
+  
+  // Initialize AI agent context for this module
+  const { agent, isAgentReady } = useAIAgent({
+    context: "child-module-context",
+    suggestedActions: ["create_entity", "view_reports"]
+  });
+  
+  const tabs = [
+    {
+      value: "tool-one",
+      label: "Primary Tool",
+      description: "Tool description",
+      tooltipText: "Detailed instructions...",
+      icon: <PrimaryIcon className="h-5 w-5" />,
+      component: <ToolOne aiAgent={agent} />,
+    },
+    // Additional tools as tabs...
+  ];
+
+  return (
+    <ChildModulePageTemplate
+      moduleName={parentModule.name}
+      modulePath={parentModule.path}
+      currentPage="Child Module Name"
+      heading="Tool Heading"
+      description="Detailed description of this module's purpose"
+      tabs={tabs}
+    />
+  );
+}
+```
+
+## 6. Implementing Tools and Sub-tools
+
+### 6.1. Design Tool Components
+Create the core functionality components with core service integration:
+
+```typescript
+// components/modules/[parent-module]/tools/ToolOne.tsx
+"use client";
+
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toolSchema } from "@/types/[child-module]";
+import { SubToolOne, SubToolTwo } from "./sub-tools";
+import { useDAM } from "@/lib/core-services/dam/useDAM";
+import { useDocuments } from "@/lib/core-services/documents/useDocuments";
+import { useNotifications } from "@/lib/core-services/notifications/useNotifications";
+
+export default function ToolOne({ aiAgent }) {
+  const [activeSubTool, setActiveSubTool] = useState("sub-tool-one");
+  
+  // Initialize core services hooks
+  const { uploadAsset, listAssets } = useDAM();
+  const { uploadDocument, listDocuments } = useDocuments();
+  const { notify } = useNotifications();
+  
+  // Form setup, state management, etc.
+  
+  // Handle media upload through DAM
+  const handleMediaUpload = async (files) => {
+    try {
+      const uploadedAssets = await Promise.all(
+        files.map(file => uploadAsset(file, "entityType"))
+      );
+      
+      // Update form with new media assets
+      form.setValue("media", [...form.getValues("media"), ...uploadedAssets]);
+      
+      // Notify success
+      notify({
+        type: "success",
+        message: `${files.length} files uploaded successfully`
+      });
+    } catch (error) {
+      notify({
+        type: "error",
+        message: "Failed to upload files"
+      });
+    }
+  };
+  
+  return (
+    <div className="space-y-8">
+      {/* Tool header and controls */}
+      <div className="flex space-x-4">
+        <button onClick={() => setActiveSubTool("sub-tool-one")}>Sub-tool One</button>
+        <button onClick={() => setActiveSubTool("sub-tool-two")}>Sub-tool Two</button>
+      </div>
+      
+      {/* AI Assistant integration */}
+      {aiAgent && (
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <h3 className="font-medium">AI Assistant Suggestions</h3>
+          <div>{aiAgent.suggestions}</div>
+          <button onClick={() => aiAgent.askQuestion("How do I use this tool?")}>
+            Get Help
+          </button>
+        </div>
+      )}
+      
+      {/* Render active sub-tool */}
+      <div className="bg-white p-6 rounded-lg shadow-lg">
+        {activeSubTool === "sub-tool-one" && (
+          <SubToolOne 
+            onMediaUpload={handleMediaUpload} 
+            onDocumentUpload={uploadDocument}
+          />
+        )}
+        {activeSubTool === "sub-tool-two" && <SubToolTwo />}
+      </div>
+    </div>
+  );
+}
+```
+
+### 6.2. Implement Sub-tool Components
+Create focused functional components that integrate with relevant core services:
+
+```typescript
+// components/modules/[parent-module]/tools/sub-tools/SubToolOne.tsx
+import { useGeolocation } from "@/lib/core-services/geolocation/useGeolocation";
+import { useAnalytics } from "@/lib/core-services/analytics/useAnalytics";
+
+export default function SubToolOne({ onMediaUpload, onDocumentUpload }) {
+  // Use location services for property mapping
+  const { getLocationDetails, renderMap } = useGeolocation();
+  const { trackEvent } = useAnalytics();
+  
+  const handleLocationSelect = async (location) => {
+    const locationDetails = await getLocationDetails(location);
+    // Use location details...
+    
+    // Track the event
+    trackEvent("location_selected", {
+      tool: "sub-tool-one",
+      location
+    });
+  };
+  
+  // Implement specific sub-tool functionality
+  return (
+    <div>
+      {/* Media upload section using DAM integration */}
+      <div className="border p-4 rounded-lg mb-4">
+        <h3 className="font-medium mb-2">Upload Media</h3>
+        <input 
+          type="file" 
+          multiple 
+          onChange={(e) => onMediaUpload(Array.from(e.target.files))} 
+        />
+      </div>
+      
+      {/* Document upload section */}
+      <div className="border p-4 rounded-lg mb-4">
+        <h3 className="font-medium mb-2">Upload Documents</h3>
+        <input 
+          type="file" 
+          multiple 
+          onChange={(e) => onDocumentUpload(Array.from(e.target.files))} 
+        />
+      </div>
+      
+      {/* Location selection using Geolocation service */}
+      <div className="border p-4 rounded-lg">
+        <h3 className="font-medium mb-2">Property Location</h3>
+        {renderMap({ height: "300px", onClick: handleLocationSelect })}
+      </div>
+    </div>
+  );
+}
+```
+
+### 6.3. Integrate Email Communications
+Leverage the Email Service (Sendgrid) for communications:
+
+```typescript
+// Within tool component
+import { useEmailService } from "@/lib/core-services/email/useEmailService";
+
+// In component function
+const { sendEmail, templates } = useEmailService();
+
+const handleSendClientEmail = async (clientData) => {
+  await sendEmail({
+    templateId: templates.PROPERTY_UPDATE,
+    to: clientData.email,
+    dynamicData: {
+      clientName: clientData.name,
+      propertyDetails: entity,
+      agentContact: userProfile
+    }
+  });
+};
+```
+
+### 6.4. Implement Search and Filtering
+Integrate with the Search Service:
+
+```typescript
+// Within tool component
+import { useSearch } from "@/lib/core-services/search/useSearch";
+
+// In component function
+const { search, buildQuery } = useSearch("entityType");
+
+const handleSearch = async (criteria) => {
+  const query = buildQuery({
+    fields: ["title", "description", "location"],
+    filters: {
+      price: { min: criteria.minPrice, max: criteria.maxPrice },
+      bedrooms: { min: criteria.minBedrooms }
+    },
+    sort: { field: criteria.sortField, direction: criteria.sortDirection }
+  });
+  
+  const results = await search(query);
+  setSearchResults(results);
+};
+```
+
+## 7. Access Control Implementation
+
+### 7.1. Define Permission Model
+Create a structured permission system that integrates with the Authentication Service:
+
+```typescript
+// lib/core-services/auth/permissions.ts
+export const PERMISSIONS = {
+  LIST_PROPERTIES: {
+    VIEW: "list-properties:view",
+    CREATE: "list-properties:create",
+    // Additional permissions...
+  },
+  // Other module permissions...
+};
+
+// Map permissions to Clerk roles and Airtable data
+export const ROLE_PERMISSIONS = {
+  ADMIN: [
+    // Full access to all permissions
+    ...Object.values(PERMISSIONS).flatMap(module => Object.values(module))
+  ],
+  AGENT: [
+    PERMISSIONS.LIST_PROPERTIES.VIEW,
+    PERMISSIONS.LIST_PROPERTIES.CREATE,
+    // Additional permissions...
+  ],
+  // Other roles...
+};
+```
+
+### 7.2. Implement Access Control Checks
+Create middleware and utility functions that use the Authentication Service:
+
+```typescript
+// lib/core-services/auth/accessControl.ts
+import { currentUser } from '@clerk/nextjs';
+import { airtableService } from '@/lib/core-services/airtable/airtableService';
+import { ROLE_PERMISSIONS } from './permissions';
+
+// Get user roles from Clerk metadata and Airtable
+async function getUserRoles(): Promise<string[]> {
+  const user = await currentUser();
+  if (!user) return [];
+  
+  // Check Clerk metadata first
+  const clerkRoles = user.publicMetadata.roles as string[] || [];
+  
+  // Augment with Airtable data if needed
+  try {
+    const airtableUser = await airtableService.fetchRecords(
+      process.env.AIRTABLE_USERS_BASE_ID,
+      process.env.AIRTABLE_USERS_TABLE_ID,
+      { filterByFormula: `{ClerkId}='${user.id}'` }
+    );
+    
+    if (airtableUser.length > 0) {
+      const airtableRoles = airtableUser[0].roles || [];
+      return [...new Set([...clerkRoles, ...airtableRoles])];
+    }
+  } catch (error) {
+    console.error("Error fetching user roles from Airtable:", error);
+  }
+  
+  return clerkRoles;
+}
+
+export async function checkPermission(permission: string): Promise<boolean> {
+  const roles = await getUserRoles();
+  
+  // Check if any of the user's roles grant the requested permission
+  return roles.some(role => 
+    ROLE_PERMISSIONS[role]?.includes(permission)
+  );
+}
+
+// React hook for client-side permission checks
+export function usePermission(permission: string) {
+  const [hasPermission, setHasPermission] = useState(false);
+  
+  useEffect(() => {
+    async function checkUserPermission() {
+      const result = await checkPermission(permission);
+      setHasPermission(result);
+    }
+    
+    checkUserPermission();
+  }, [permission]);
+  
+  return hasPermission;
+}
+```
+
+### 7.3. Apply Access Control in UI
+Conditionally render UI elements based on permissions:
+
+```typescript
+// Within component
+import { usePermission } from "@/lib/core-services/auth/accessControl";
+import { PERMISSIONS } from "@/lib/core-services/auth/permissions";
+
+// In component function
+const canCreateEntity = usePermission(PERMISSIONS.MODULE.CREATE);
+const canDeleteEntity = usePermission(PERMISSIONS.MODULE.DELETE);
+
+// In component render
+{canCreateEntity && (
+  <Button onClick={handleCreate}>Create New</Button>
+)}
+
+{entity && canDeleteEntity && (
+  <Button variant="destructive" onClick={() => handleDelete(entity.id)}>
+    Delete
+  </Button>
+)}
+```
+
+## 8. AI Agent Integration
+
+### 8.1. Context Setup
+Provide module-specific context to the AI Agent:
+
+```typescript
+// lib/modules/[parent-module]/aiContext.ts
+export const moduleAIContext = {
+  moduleDescription: "This module handles entity management",
+  commonTasks: [
+    {
+      name: "Create New Entity",
+      description: "Create a new entity with basic details",
+      steps: [
+        "Navigate to the main tool",
+        "Click the 'Create New' button",
+        "Fill out the required fields",
+        "Submit the form"
+      ]
+    },
+    // Other common tasks...
+  ],
+  tools: [
+    {
+      name: "Primary Tool",
+      description: "Main tool for entity management",
+      capabilities: ["create", "edit", "view"]
+    },
+    // Other tools...
+  ]
+};
+```
+
+### 8.2. AI Agent Integration
+Add agent-specific UI elements:
+
+```typescript
+// Within tool component
+import { AIAgentWidget, useAIAgent } from "@/lib/core-services/ai/aiAgentComponents";
+import { moduleAIContext } from "@/lib/modules/[parent-module]/aiContext";
+
+// In component function
+const { agent, isReady, suggestions } = useAIAgent({
+  context: moduleAIContext,
+  currentTool: "primaryTool"
+});
+
+// In component render
+<div className="mb-4">
+  <AIAgentWidget 
+    agent={agent} 
+    suggestions={suggestions}
+    isReady={isReady}
+  />
+</div>
+```
+
+## 9. Analytics Integration
+
+### 9.1. Define Module Events
+Establish standardized analytics events for the module:
+
+```typescript
+// lib/modules/[parent-module]/analytics.ts
+export const ANALYTICS_EVENTS = {
+  ENTITY_CREATED: "entity_created",
+  ENTITY_UPDATED: "entity_updated",
+  ENTITY_DELETED: "entity_deleted",
+  SEARCH_PERFORMED: "search_performed",
+  TOOL_SELECTED: "tool_selected",
+  SUBTOOL_SELECTED: "subtool_selected"
+};
+
+export const ANALYTICS_PROPERTIES = {
+  entityTypes: ["type1", "type2", "type3"],
+  tools: ["primaryTool", "secondaryTool"],
+  subTools: ["subToolOne", "subToolTwo"]
+};
+```
+
+### 9.2. Track User Actions
+Implement analytics tracking using the Analytics Service:
+
+```typescript
+// Within component
+import { useAnalytics } from "@/lib/core-services/analytics/useAnalytics";
+import { ANALYTICS_EVENTS } from "@/lib/modules/[parent-module]/analytics";
+
+// In component function
+const { trackEvent, trackPageView } = useAnalytics();
+
+// Track page view on component mount
+useEffect(() => {
+  trackPageView({
+    pageName: "Child Module Page",
+    pageType: "tool",
+    parentModule: "parentModule"
+  });
+}, [trackPageView]);
+
+// Track specific user action
+const handleAction = (action, data) => {
+  // Perform the action
+  // ...
+  
+  // Track the event
+  trackEvent(ANALYTICS_EVENTS.ENTITY_CREATED, {
+    entityType: data.type,
+    entityId: response.id,
+    toolName: "primaryTool"
+  });
+};
+```
+
+## 10. Module Testing and Validation
+
+### 10.1. Unit Testing Core Service Integrations
+Test integration with core services:
+
+```typescript
+// __tests__/modules/[parent-module]/services.test.ts
+import { createEntity } from "@/lib/modules/[parent-module]/[child-module]Service";
+import { damService } from "@/lib/core-services/dam/damService";
+import { airtableService } from "@/lib/core-services/airtable/airtableService";
+
+// Mock core services
+jest.mock("@/lib/core-services/dam/damService");
+jest.mock("@/lib/core-services/airtable/airtableService");
+
+describe("[Child Module] Service Core Integration", () => {
+  test("createEntity correctly uses DAM service", async () => {
+    // Setup mocks
+    damService.processAsset.mockResolvedValue({ id: "asset-id", url: "asset-url" });
+    airtableService.createRecord.mockResolvedValue({ id: "record-id" });
+    
+    // Test the service
+    const result = await createEntity({
+      title: "Test Entity",
+      media: [{ file: new File([], "test.jpg") }]
+    });
+    
+    // Assert core service integration
+    expect(damService.processAsset).toHaveBeenCalled();
+    expect(airtableService.createRecord).toHaveBeenCalled();
+  });
+});
+```
+
+### 10.2. Permission Testing
+Test permission-based behavior:
+
+```typescript
+// __tests__/modules/[parent-module]/permissions.test.ts
+import { render, screen } from "@testing-library/react";
+import { usePermission } from "@/lib/core-services/auth/accessControl";
+
+// Mock the permission hook
+jest.mock("@/lib/core-services/auth/accessControl");
+
+describe("ToolOne Permissions", () => {
+  test("create button is hidden when user lacks permission", () => {
+    // Setup permission mock
+    usePermission.mockReturnValue(false);
+    
+    // Render component
+    render(<ToolOne />);
+    
+    // Assert button is not present
+    expect(screen.queryByText("Create New")).not.toBeInTheDocument();
+  });
+  
+  test("create button is visible when user has permission", () => {
+    // Setup permission mock
+    usePermission.mockReturnValue(true);
+    
+    // Render component
+    render(<ToolOne />);
+    
+    // Assert button is present
+    expect(screen.getByText("Create New")).toBeInTheDocument();
+  });
+});
+```
+
+### 10.3. End-to-End Testing With Core Services
+Test complete workflows with core service interactions:
+
+```typescript
+// cypress/e2e/[parent-module]/[child-module].cy.js
+describe("[Child Module] E2E", () => {
+  beforeEach(() => {
+    // Mock core services for E2E testing
+    cy.intercept("POST", "/api/airtable/*", { id: "new-record" }).as("createRecord");
+    cy.intercept("POST", "/api/dam/upload", { id: "new-asset" }).as("uploadAsset");
+    
+    // Login and navigate to module
+    cy.login("test-user");
+    cy.visit("/parent-module/child-module");
+  });
+  
+  it("allows creating entity with media upload", () => {
+    // Test the full workflow
+    cy.get("[data-test=create-button]").click();
+    cy.get("[data-test=title-input]").type("Test Entity");
+    
+    // Test file upload through DAM service
+    cy.get("[data-test=file-upload]").attachFile("test-image.jpg");
+    cy.wait("@uploadAsset");
+    
+    // Submit and verify Airtable integration
+    cy.get("[data-test=submit-button]").click();
+    cy.wait("@createRecord");
+    
+    // Verify success state
+    cy.contains("Entity created successfully");
+  });
+});
+```
+
+## 11. Documentation and Knowledge Transfer
+
+### 11.1. Core Service Integration Documentation
+Document how the module integrates with core services:
+
+```markdown
+# [Module Name] Core Service Integration
+
+## Service Dependencies
+This module integrates with the following core services:
+- **Airtable Integration Service**: For data storage and retrieval
+- **Digital Asset Management**: For handling property photos and videos
+- **Email Service (Sendgrid)**: For client communications
+- **Notification Service**: For system alerts
+- **AI Agent Service**: For user assistance
+
+## Integration Details
+
+### Airtable Integration
+- **Tables Used**: `entities`, `relationships`
+- **Key Fields**: `id`, `title`, `status`, `createdAt`
+- **Relationships**: One-to-many relationship with `mediaAssets`
+
+### Digital Asset Management
+- **Storage Zones**: Uses the `listing-media` zone
+- **Asset Types**: Supports images and videos
+- **Thumbnails**: Automatically generates property thumbnails
+
+### Email Communications
+- **Templates Used**: `entity_created`, `status_update`
+- **Recipient Types**: Internal team, clients, partners
+```
+
+### 11.2. Module-specific AI Agent Instructions
+Document how the AI Agent should assist users in this module:
+
+```markdown
+# AI Agent Configuration for [Module Name]
+
+## Module Context
+The AI Agent should understand that this module is for [primary purpose].
+
+## Common User Questions
+- "How do I create a new entity?"
+- "Where can I find my saved drafts?"
+- "How do I share this with a client?"
+
+## Recommended Actions
+- For new users, suggest creating their first entity
+- When viewing an entity, suggest downloading documents
+- After updates, suggest sending client notifications
+
+## Integration Points
+- The agent can help fill out forms by suggesting values
+- The agent can generate content for description fields
+- The agent can explain complex workflow steps
+```
+
+### 11.3. User Documentation with Core Service References
+Create user-friendly documentation that explains service integrations:
+
+```markdown
+# Using [Module Name]
+
+## Overview
+This module helps you manage [core functionality].
+
+## Features
+- Create and manage entities
+- Upload and organize media assets
+- Generate client communications
+- Track performance metrics
+
+## Media Management
+This module uses our central Digital Asset Management system, which means:
+- Your uploads are automatically optimized
+- Media is securely stored and backed up
+- The same media can be easily reused across modules
+- Access controls apply based on your permissions
+
+## Email Communications
+When sending client communications:
+- Professional templates are automatically applied
+- Emails are tracked for opens and clicks
+- Communication history is maintained for compliance
+- Scheduled emails can be reviewed before sending
+```
+
+## 12. Dashboard Integration
+
+### 12.1. Create Module Widget
+Develop a dashboard widget for the module:
+
+```typescript
+// components/dashboard/[ModuleName]Widget.tsx
+import { useEntities } from "@/lib/modules/[parent-module]/hooks/useEntities";
+import { useAnalytics } from "@/lib/core-services/analytics/useAnalytics";
+
+export default function ModuleWidget() {
+  const { entities, isLoading } = useEntities({ limit: 5 });
+  const { getMetrics } = useAnalytics();
+  
+  // Get analytics metrics for this module
+  const metrics = getMetrics({
+    module: "parentModule",
+    period: "30d",
+    metrics: ["views", "interactions", "conversions"]
+  });
+  
+  return (
+    <div className="bg-white p-4 rounded-lg shadow">
+      <h3 className="font-medium mb-2">[Module] Overview</h3>
+      
+      {/* Key metrics */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="text-center">
+          <p className="text-2xl font-bold">{metrics.views}</p>
+          <p className="text-sm text-gray-600">Views</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold">{metrics.interactions}</p>
+          <p className="text-sm text-gray-600">Interactions</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold">{metrics.conversions}</p>
+          <p className="text-sm text-gray-600">Conversions</p>
+        </div>
+      </div>
+      
+      {/* Recent entities */}
+      <h4 className="font-medium text-sm mb-2">Recent Items</h4>
+      {isLoading ? (
+        <p>Loading...</p>
+      ) : (
+        <ul className="space-y-2">
+          {entities.map(entity => (
+            <li key={entity.id} className="flex justify-between">
+              <span>{entity.title}</span>
+              <span className="text-sm text-gray-600">{entity.createdAt}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+```
+
+### 12.2. Register Dashboard Widget
+Add the widget to the dashboard:
+
+```typescript
+// In dashboard configuration
+import ModuleWidget from "@/components/dashboard/[ModuleName]Widget";
+
+const dashboardConfig = {
+  widgets: [
+    {
+      id: "module-widget",
+      component: ModuleWidget,
+      defaultPosition: { x: 0, y: 0, w: 1, h: 1 },
+      permissions: ["module:view"]
+    },
+    // Other widgets...
+  ]
+};
+```
+
+By following this comprehensive pattern for module implementation with core service integration, your real estate command center will maintain a consistent architecture while leveraging the full power of your platform's foundational services. This approach ensures a cohesive user experience, maintains security through proper permission controls, and enables intelligent assistance through the AI Agent service.

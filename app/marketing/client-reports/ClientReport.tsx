@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import ReportContent, { Property } from './ReportContent';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/default/button';
 import { Loader2 } from 'lucide-react';
 
 interface ClientReportProps {

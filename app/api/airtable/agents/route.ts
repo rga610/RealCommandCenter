@@ -1,7 +1,7 @@
 // app/api/airtable/agents/route.ts
 
 import { NextResponse } from "next/server";
-import { getAndCacheAgents } from "@/app/lib/agents";
+import { getAndCacheAgents } from "@/lib/core-services/cache/agents";
 
 export async function GET(request: Request) {
   try {

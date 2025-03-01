@@ -2,14 +2,14 @@
 
 "use client";
 
-import { MODULES } from "@/app/lib/modules"; // Import module config
-import ModuleBreadcrumb from "@/components/ui/my_components/ModuleBreadcrumb"; // Import custom breadcrumb component
-import ModuleTabs from "@/components/ui/my_components/ModuleTabs"; // Import custom tabs component
+import { MODULES } from "@/lib/modules/modules-directory"; // Import module config
+import ModuleBreadcrumb from "@/components/modules/ModuleBreadcrumb"; // Import custom breadcrumb component
+import ModuleTabs from "@/components/modules/ModuleTabs"; // Import custom tabs component
 import { FileText, FolderOpen } from "lucide-react"; // Import icons
 
 // Import tools //
-import ToolOne from "@/app/lib/templates/DataForm";
-import ToolTwo from "@/app/lib/templates/ToolTwo";
+import ToolOne from "@/lib/templates/DataFormTemplate";
+import ToolTwo from "@/lib/templates/ToolTwo";
 
 export default function Module() {
   const module = MODULES.sell;

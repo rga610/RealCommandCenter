@@ -1,0 +1,268 @@
+# Recommended Project Folder Structure
+
+## Top-Level Structure
+
+```
+real-estate-command-center/
+├── app/                         # Next.js App Router pages
+│   ├── api/                     # API routes
+│   ├── (auth)/                  # Authentication pages
+│   ├── metrics/                 # Dashboard pages
+│   ├── list-properties/         # List Properties module pages
+│   ├── sell-properties/         # Sell Properties module pages
+│   ├── marketing/               # Marketing module pages
+│   ├── layout.tsx               # Root layout
+│   ├── page.tsx                 # Homepage
+│   └── providers.tsx            # Global providers
+├── components/                  # Reusable UI components
+├── lib/                         # Business logic and utilities
+├── public/                      # Static assets
+├── types/                       # TypeScript type definitions
+├── styles/                      # Global styles
+├── tests/                       # Testing utilities
+├── next.config.js               # Next.js configuration
+├── tailwind.config.js           # Tailwind CSS configuration
+├── package.json                 # Project dependencies
+└── README.md                    # Project documentation
+```
+
+## Detailed Core Services Structure
+
+```
+lib/
+├── core-services/               # Core services implementation
+│   ├── airtable/                # Airtable Integration Service
+│   │   ├── airtableService.ts   # Main service implementation
+│   │   ├── mapping.ts           # Data mapping helpers
+│   │   ├── hooks/               # React hooks for service
+│   │   │   ├── useAirtable.ts   # Main Airtable hook
+│   │   │   └── useCachedQuery.ts # Cached query hook
+│   │   └── types.ts             # Service-specific types
+│   │ 
+│   ├── cache/                   # cache integration and logic
+│   │
+│   ├── ai/                      # AI Agent Service
+│   │   ├── aiAgentService.ts    # Main service implementation
+│   │   ├── contextManager.ts    # Manages AI context
+│   │   ├── promptTemplates.ts   # AI prompt templates
+│   │   ├── hooks/               # React hooks for AI
+│   │   │   └── useAIAgent.ts    # AI agent hook
+│   │   └── components/          # AI-specific components
+│   │       └── AIAgentWidget.tsx # Chat widget for AI
+│   │
+│   ├── analytics/               # Analytics & Reporting Service
+│   ├── auth/                    # Authentication Service
+│   │   ├── accessControl.ts     # Permission checking
+│   │   ├── clerkIntegration.ts  # Clerk integration
+│   │   ├── hooks/               # Auth hooks
+│   │   └── permissions.ts       # Permission definitions
+│   │
+│   ├── dam/                     # Digital Asset Management
+│   │   ├── damService.ts        # Main DAM service
+│   │   ├── bunnyIntegration.ts  # BunnyCDN integration
+│   │   ├── mediaProcessing.ts   # Image/video processing
+│   │   └── hooks/               # DAM hooks
+│   │
+│   ├── documents/               # Document Management
+│   ├── email/                   # Email Service (Sendgrid)
+│   ├── geolocation/             # Geolocation Service
+│   ├── notifications/           # Notification Service
+│   ├── search/                  # Search Service
+│   ├── wordpress/               # WordPress Integration
+│   │
+│   └── service-registry.ts      # Central registry of services
+│
+├── modules/                     # Module-specific business logic
+│   ├── modules-directory.ts     # Module configuration
+│   ├── list-properties/         # Listing module services
+│   ├── sell-properties/         # Selling module services
+│   └── marketing/               # Marketing module services
+│
+└── utils/                       # General utilities
+    ├── date.ts                  # Date formatting helpers
+    ├── formatting.ts            # Text formatting
+    ├── validation.ts            # Generic validation
+    └── currency.ts              # Currency formatting
+```
+
+## Detailed Module Structure (Example: list-properties)
+
+```
+app/list-properties/
+├── page.tsx                     # Parent module page
+├── layout.tsx                   # Module layout (permissions)
+│
+├── capture-inquiries/           # Child module
+│   ├── page.tsx                 # Child module page
+│   └── [...catchAll]/           # Dynamic routes if needed
+│
+├── collect-data/                # Child module
+│   └── page.tsx                 # Child module page
+│
+├── evaluate/                    # Child module
+│   └── page.tsx                 # Child module page
+│
+└── activate/                    # Child module
+    └── page.tsx                 # Child module page
+```
+
+## Module-specific Components
+
+```
+components/
+├── core/                        # Core UI components
+│   ├── Button.tsx               # Button component
+│   ├── Input.tsx                # Input component
+│   ├── Select.tsx               # Select component
+│   └── ...                      # Other core components
+│
+├── forms/                       # Form components
+│   ├── FormTemplate.tsx         # Reusable form template
+│   └── ...                      # Other form components
+│
+├── layouts/                     # Layout components
+│   ├── Header.tsx               # Header component
+│   ├── Sidebar.tsx              # Sidebar component
+│   └── ...                      # Other layout components
+│
+├── modules/                     # Module-specific components
+│   ├── ParentModuleComponent.tsx # Parent module template
+│   ├── ChildModuleComponent.tsx  # Child module template
+│   │
+│   ├── list-properties/         # List Properties components
+│   │   ├── tools/               # Tool components
+│   │   │   ├── ListingForm.tsx  # Listing form tool
+│   │   │   ├── DocumentManager.tsx # Document tool
+│   │   │   └── ...              # Other tools
+│   │   │
+│   │   ├── shared/              # Shared module components
+│   │   └── ...                  # Other module components
+│   │
+│   ├── sell-properties/         # Sell Properties components
+│   │   └── ...                  # Module-specific components
+│   │
+│   └── marketing/               # Marketing components
+│       └── ...                  # Module-specific components
+│
+└── ui/                          # UI components from libraries
+    ├── my_components/           # Your custom versions
+    └── ...                      # UI library components
+```
+
+## Type Definitions
+
+```
+types/
+├── core-services/               # Core service types
+│   ├── airtable.ts              # Airtable types
+│   ├── auth.ts                  # Auth types
+│   ├── dam.ts                   # DAM types
+│   └── ...                      # Other service types
+│
+├── modules/                     # Module-specific types
+│   ├── list-properties/
+│   │   └── types.ts             # List Properties types
+│   ├── sell-properties/
+│   │   └── types.ts             # Sell Properties types
+│   └── marketing/
+│   │   └── types.ts             # Merkting types
+│   └── media/
+│   │   └── types.ts             # Media types
+│   └── ...                      # Other service types
+│
+├── api.ts                       # API request/response types
+├── entities.ts                  # Common entity types
+└── global.d.ts                  # Global type declarations
+```
+
+## API Routes Structure
+
+```
+app/api/
+├── airtable/                    # Airtable API routes
+│   ├── agents/                  # Agent-related endpoints
+│   │   ├── route.ts             # GET/POST handlers
+│   │   └── refresh/
+│   │       └── route.ts         # Cache refresh handler
+│   │
+│   ├── listing-intake/
+│   │   └── route.ts             # Listing intake handlers
+│   │
+│   └── ...                      # Other Airtable endpoints
+│
+├── auth/                        # Auth API routes
+│   └── [...nextauth]/
+│       └── route.ts             # NextAuth handlers
+│
+├── dam/                         # Digital Asset Management API
+│   ├── upload/
+│   │   └── route.ts             # Asset upload handler
+│   └── assets/
+│       └── route.ts             # Asset management handlers
+│
+├── email/                       # Email API routes
+│   └── route.ts                 # Email sending handler
+│
+├── list-properties/             # Module-specific API routes
+│   └── ...                      # Module endpoints
+│
+├── sell-properties/             # Module-specific API routes
+│   └── ...                      # Module endpoints
+│
+└── marketing/                   # Module-specific API routes
+    └── ...                      # Module endpoints
+```
+
+## Key Files and Their Purposes
+
+### Core Configuration Files
+
+1. **lib/core-services/service-registry.ts**
+   - Central registry of all core services
+   - Service initialization and dependency management
+   - Configuration for each service
+
+2. **lib/modules/modules-directory.ts**
+   - Defines all modules in the application
+   - Service dependencies for each module
+   - Navigation structure
+
+3. **lib/core-services/auth/permissions.ts**
+   - Permission definitions
+   - Role-to-permission mappings
+   - Access control rules
+
+### Module Implementation Files
+
+1. **components/modules/ParentModuleComponent.tsx**
+   - Template for parent module pages
+   - Navigation to child modules
+   - Consistent layout and styling
+
+2. **components/modules/ChildModuleComponent.tsx**
+   - Template for child module pages
+   - Tab navigation between tools
+   - Consistent layout and styling
+
+3. **app/[module]/page.tsx**
+   - Parent module page implementation
+   - Uses ParentModuleComponent as a template
+   - Defines child modules
+
+4. **app/[module]/[child-module]/page.tsx**
+   - Child module page implementation
+   - Uses ChildModuleComponent as a template
+   - Defines tools as tabs
+
+### Sample Implementation Flow
+
+When implementing a new module, follow this typical flow of files:
+
+1. Add module entry in `lib/modules/modules-directory.ts`
+2. Create module folder in `app/[module-name]/`
+3. Implement parent module page in `app/[module-name]/page.tsx`
+4. Create child module folders in `app/[module-name]/[child-module]/`
+5. Implement type definitions in `types/modules/[module-name].ts`
+6. Create module services in `lib/modules/[module-name]/`
+7. Implement module components in `components/modules/[module-name]/`
+8. Add API routes in `app/api/[module-name]/`

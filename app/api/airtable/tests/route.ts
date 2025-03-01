@@ -1,7 +1,7 @@
 // app/api/airtable/tests/route.ts
 
 import { NextResponse } from "next/server";
-import { createAirtableRecord } from "@/app/lib/airtable";
+import { createAirtableRecord } from "@/lib/core-services/airtable/airtableService";
 
 export async function POST(req: Request) {
   try {

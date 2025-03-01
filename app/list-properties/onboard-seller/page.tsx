@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Breadcrumb } from '@/components/ui/breadcrumb'
-import { Card } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
+import { Breadcrumb } from '@/components/default/breadcrumb'
+import { Card } from '@/components/default/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/default/tabs'
+import { Button } from '@/components/default/button'
 import { 
   ClipboardCheck, 
   Calendar, 

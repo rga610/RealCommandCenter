@@ -1,13 +1,13 @@
 "use client";
 
-import { MODULES } from "@/app/lib/modules"; // Import module config
-import ModuleBreadcrumb from "@/components/ui/my_components/ModuleBreadcrumb"; // Import custom breadcrumb component
-import ModuleTabs from "@/components/ui/my_components/ModuleTabs"; // Import custom tabs component
+import { MODULES } from "@/lib/modules/modules-directory"; // Import module config
+import ModuleBreadcrumb from "@/components/modules/ModuleBreadcrumb"; // Import custom breadcrumb component
+import ModuleTabs from "@/components/modules/ModuleTabs"; // Import custom tabs component
 import { FileText, FolderOpen } from "lucide-react"; // Import icons
 
 // Import tools //
 import ClientReport from "@/app/marketing/client-reports/ClientReport";
-import ToolTwo from "@/app/lib/templates/ToolTwo"; // Change this per page
+import ToolTwo from "@/lib/templates/ToolTwo"; // Change this per page
 
 export default function Module() {
   const module = MODULES.marketing; // Specify parent module here

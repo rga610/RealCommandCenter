@@ -7,7 +7,7 @@ import '@fontsource/outfit';
 
 import { ClerkProvider } from '@clerk/nextjs';
 import { Providers } from './providers';
-import Header from '@/components/Header'; 
+import Header from '@/components/core/Header'; 
 // ^ or wherever your custom Header is located
 
 export const metadata: Metadata = {

@@ -1,11 +1,13 @@
-// 3. API Route for Marketing Assets
 // app/api/media/marketing-assets/route.ts
 import { NextResponse } from "next/server";
-import { getMarketingAssets } from "@/app/lib/media/mediaService";
+import { getMarketingAssets } from "@/lib/modules/media/mediaService";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const assets = await getMarketingAssets();
+    const { searchParams } = new URL(req.url);
+    const folder = searchParams.get('folder') || '';
+    
+    const assets = await getMarketingAssets(folder);
     return NextResponse.json({ assets });
   } catch (error) {
     console.error("Error fetching marketing assets:", error);

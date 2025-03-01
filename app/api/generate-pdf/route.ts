@@ -1,7 +1,7 @@
 // app/api/generate-pdf/route.ts
 import { NextResponse } from 'next/server';
-import { generateReportHTML } from '@/lib/marketing/generateReportHTML';
-import { generatePDF } from '@/app/lib/marketing/pdfService';
+import { generateReportHTML } from '@/lib/modules/marketing/generateReportHTML';
+import { generatePDF } from '@/lib/modules/marketing/pdfService';
 import type { Property } from '@/app/marketing/client-reports/ReportContent';
 
 export async function POST(request: Request) {

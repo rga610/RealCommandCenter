@@ -2,7 +2,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/default/button';
 import { AlertCircle } from 'lucide-react';
 import { BRANDING } from '@/public/images/branding/branding';
 import Image from 'next/image';

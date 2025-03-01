@@ -1,7 +1,7 @@
 // app/api/airtable/agents/refresh/route.ts
 
 import { NextResponse } from "next/server";
-import { forceRefreshAgentsCache } from "@/app/lib/agents";
+import { forceRefreshAgentsCache } from "@/lib/core-services/cache/agents";
 
 export async function POST() {
   try {

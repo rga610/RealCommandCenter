@@ -2,9 +2,9 @@
 "use client";
 
 import { useForm, FormProvider } from "react-hook-form";
-import { MODULES } from "@/app/lib/modules";
-import ModuleBreadcrumb from "@/components/ui/my_components/ModuleBreadcrumb";
-import ModuleTabs from "@/components/ui/my_components/ModuleTabs";
+import { MODULES } from "@/lib/modules/modules-directory";
+import ModuleBreadcrumb from "@/components/modules/ModuleBreadcrumb";
+import ModuleTabs from "@/components/modules/ModuleTabs";
 import { FileText, FolderOpen } from "lucide-react";
 
 // Import tools

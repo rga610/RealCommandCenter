@@ -119,6 +119,12 @@ CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
 ```
 
+### **Airtable PATs**
+```
+AIRTABLE_MEDIA_BASE_ID=
+AIRTABLE_MEDIA_ASSETS_TABLE_ID=
+```
+
 ---
 ## 🔄 **7. Future Improvements & Considerations**
 - **Automated Archiving**: Move old/unpublished media to `archived-media` automatically.
@@ -136,3 +142,240 @@ This setup ensures:
 
 This guide should serve as a **complete reference** for setting up and maintaining the **Media & Asset Management System**.
 
+
+
+Implementation guide:
+
+Media & Marketing Asset Management System Implementation Schema
+This schema outlines all the files we'll create, their purposes, and how they interconnect to form a complete media management solution for your Real Estate Command Center.
+
+
+Core Infrastructure Layer
+
+Configuration & Types 
+
+app/lib/media/types.ts [DONE]
+
+Contains all TypeScript interfaces and types
+Defines MediaAsset, MediaUploadOptions, TransformationOptions, etc.
+Used throughout the entire media system for type consistency
+'''
+
+app/lib/media/config.ts [DONE]
+
+Centralizes configuration settings
+Includes Bunny.net, Cloudinary, and general media settings
+Loads environment variables and provides defaults
+'''
+
+
+Service Layer
+
+app/lib/media/storageService.ts [DONE]
+
+Handles direct interaction with Bunny.net
+Manages file uploads, deletions, and storage operations
+Generates signed URLs for private assets
+'''
+
+app/lib/media/transformationService.ts [DONE]
+
+Interfaces with Cloudinary
+Handles image transformations (resize, format conversion, etc.)
+Optimizes images for web delivery
+'''
+
+app/lib/media/databaseService.ts [DONE]
+
+Integrates with Airtable for asset metadata storage
+Manages CRUD operations for media assets
+Handles querying and filtering assets
+'''
+
+app/lib/media/mediaServiceNew.ts [DONE]
+
+High-level facade that orchestrates the other services
+Provides a unified API for frontend components
+Handles complex operations that span multiple services
+'''
+
+
+API Layer
+
+app/api/media/upload/route.ts  [DONE]
+
+Handles multipart form uploads
+Processes files and metadata
+Returns asset information to the client
+'''
+
+app/api/media/assets/route.ts 
+
+Lists and filters media assets
+Supports pagination, search, and folder filtering
+Returns asset metadata to the client
+'''
+
+app/api/media/transform/route.ts
+
+On-demand image transformations
+Handles resize, crop, format conversion requests
+Returns transformed image URLs
+'''
+
+app/api/media/signed-url/route.ts
+
+Generates temporary signed URLs for private assets
+Implements expiration and access controls
+Validates requester's permissions
+'''
+
+app/api/media/delete/route.ts [DONE]
+
+Handles asset deletion requests
+Removes from storage and database
+Validates permissions before deletion
+'''
+
+
+UI Components Layer
+
+components/ui/my_components/media/MediaProvider.tsx
+
+Context provider for global media state
+Manages recent assets, selections, and uploads
+Provides hooks for components to access media functionality
+'''
+
+components/ui/my_components/media/MediaUploader.tsx
+
+Drag-and-drop file uploader
+Handles single and multi-file uploads
+Shows progress, errors, and success states
+'''
+
+components/ui/my_components/media/MediaBrowser.tsx
+
+Grid/list view of media assets
+Supports filtering, sorting, and search
+Enables asset selection for forms
+'''
+
+components/ui/my_components/media/MediaPreview.tsx
+
+Image/file preview component
+Handles different file types appropriately
+Shows metadata and actions for assets
+'''
+
+components/ui/my_components/media/MediaSelect.tsx
+
+Form field for media selection
+Integrates with existing form libraries
+Supports single and multiple selections
+'''
+
+components/ui/my_components/media/MediaCard.tsx
+
+Card component for displaying a single asset
+Shows thumbnail, name, and quick actions
+Used in grids and lists
+'''
+
+
+Integration Components
+
+components/ui/my_components/media/PropertyMediaManager.tsx
+
+Specialized media manager for property listings
+Organizes images by type (exterior, interior, etc.)
+Sets featured images and order
+'''
+
+components/ui/my_components/media/MarketingAssetSelector.tsx
+
+Component for selecting marketing materials
+Filters by relevance to marketing context
+Groups assets by campaigns or types
+'''
+
+
+Page Components
+
+app/media-library/page.tsx
+
+Full media library management page
+Advanced filtering, sorting, and batch operations
+Admin capabilities for system-wide assets
+'''
+
+app/media-library/upload/page.tsx
+
+Dedicated upload page with advanced options
+Batch metadata editing
+Post-upload organization tools
+'''
+
+
+Utility Files
+
+app/lib/media/utils.ts
+
+Helper functions for media operations
+File type detection, size formatting, etc.
+Shared utilities across the media system
+'''
+
+app/lib/media/hooks.ts
+
+Custom React hooks for media functionality
+useMediaUpload, useMediaBrowser, etc.
+Simplifies component integration
+'''
+
+
+Interconnection Flow
+
+User Interaction Flow:
+
+User interacts with MediaUploader/MediaBrowser components
+Components use MediaProvider context or direct API calls
+API routes process requests and invoke service layer
+Services coordinate operations across storage, transformation, and database
+Results flow back to UI components via API responses
+
+
+Asset Upload Flow:
+
+MediaUploader component → /api/media/upload route
+Route calls mediaService.uploadMedia()
+mediaService coordinates:
+
+storageService to handle file upload to Bunny.net
+transformationService to create optimized versions
+databaseService to store metadata in Airtable
+
+
+Response returns to component with asset info
+
+
+Asset Browsing Flow:
+
+MediaBrowser component → /api/media/assets route
+Route calls databaseService.getAssets()
+Results returned to component for display
+Component renders assets using MediaCard components
+
+
+Image Transformation Flow:
+
+Component requests transformation via mediaService
+transformationService processes via Cloudinary
+Optimized image URL returned to component
+
+
+Integration with Forms:
+
+Form components use MediaSelect for asset selection
+Selection stored in form state
+On submission, asset IDs/URLs included in form data

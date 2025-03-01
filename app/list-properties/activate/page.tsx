@@ -4,28 +4,28 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { Breadcrumb } from '@/components/ui/breadcrumb'
-import { Card } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Form } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
+import { Breadcrumb } from '@/components/default/breadcrumb'
+import { Card } from '@/components/default/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/default/tabs'
+import { Form } from '@/components/default/form'
+import { Input } from '@/components/default/input'
+import { Button } from '@/components/default/button'
+import { Textarea } from '@/components/default/textarea'
+import { Label } from '@/components/default/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/default/select"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/default/dialog"
 import { toast } from 'sonner'
 import { 
   Globe,

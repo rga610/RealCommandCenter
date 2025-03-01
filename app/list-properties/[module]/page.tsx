@@ -2,7 +2,7 @@
 
 import { ArrowLeft } from 'lucide-react'
 import { useParams } from 'next/navigation'
-import { Breadcrumb } from '@/components/ui/breadcrumb'
+import { Breadcrumb } from '@/components/default/breadcrumb'
 
 const moduleNames: { [key: string]: string } = {
   'generate-inquiries': 'Generate Seller Inquiries',
