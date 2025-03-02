@@ -29,6 +29,6 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "types/next-auth.d.ts"  // ✅ Google Auth
-, "scripts/test-redis.js", "lib/core-services/cache/redisService.ts"  ],
+, "scripts/test-redis.js", "lib/core-services/cache/cacheService.ts"  ],
   "exclude": ["node_modules"]
 }

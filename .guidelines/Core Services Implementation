@@ -49,6 +49,7 @@ Below is a **step-by-step implementation plan** for creating your Core Services,
 2. **Create a `types/core-services` Folder**  
    - Store your TypeScript interfaces or type definitions for each service here (e.g., `airtable.ts`, `auth.ts`, `cache.ts`, etc.).  
    - This makes it easier for other parts of the app to consume service methods consistently.
+   - If a type is used by multiple services or modules, add it under types/core-services. If it’s specific to a single service, define it in that service’s folder.
 
 3. **Set Up a `service-registry.ts`**  
    - In `lib/core-services/service-registry.ts`, define a class (e.g. `ServiceRegistry`) that:  
@@ -107,7 +108,7 @@ Below is a **step-by-step implementation plan** for creating your Core Services,
 ### 4A. Caching (Cache Service)
 
 1. **Decide on a Redis Provider**  
-   - In your case, you might use Upstash Redis or a similar managed solution.  
+   - We will use Upstash Redis.  
    - Keep the client logic in a dedicated `cacheService.ts`.
 
 2. **Implement a `CacheService` Class**  

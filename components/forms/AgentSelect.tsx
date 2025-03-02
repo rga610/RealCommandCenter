@@ -1,5 +1,3 @@
-// components/ui/my_components/AgentSelect.tsx
-
 "use client";
 
 import React, { useState } from "react";
@@ -22,24 +20,23 @@ export interface AgentSelectProps {
   enableRefresh?: boolean;
 }
 
-// SWR fetcher for agents
+// --- SWR fetcher for agents ---
 const fetchAgents = async (url: string): Promise<Agent[]> => {
-  // Add a cache-busting timestamp
-  const urlWithTimestamp = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
-  
+  // Add a cache-busting timestamp for the GET request
+  const urlWithTimestamp = `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
   console.log(`Fetching agents from: ${urlWithTimestamp}`);
-  const res = await fetch(urlWithTimestamp);
-  
+
+  const res = await fetch(urlWithTimestamp, { cache: "no-store" });
   if (!res.ok) {
     console.error(`Error fetching agents: ${res.status}`);
     throw new Error("Failed to load agents");
   }
-  
+
   const data = await res.json();
-  console.log(`Received ${Array.isArray(data) ? data.length : 'unknown'} agents`);
-  
-  // Handle different response formats
-  return Array.isArray(data) ? data : (data.agents || []);
+  console.log(`Received ${Array.isArray(data) ? data.length : "unknown"} agents`);
+
+  // If data is an array, return it. If it's { agents: [...] }, return data.agents
+  return Array.isArray(data) ? data : data.agents || [];
 };
 
 export default function AgentSelect({
@@ -49,71 +46,66 @@ export default function AgentSelect({
   label = "Select an Agent",
   enableRefresh = true,
 }: AgentSelectProps) {
+  // We'll keep a single SWR key for GET requests
+  const AGENTS_GET_KEY = "/api/airtable/agents";
+
+  // Use SWR to fetch the agents from GET /api/airtable/agents
+  const {
+    data: agents = [],
+    mutate,
+    isValidating,
+    isLoading,
+  } = useSWR<Agent[]>(AGENTS_GET_KEY, fetchAgents, {
+    revalidateOnMount: true,
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: 5000, // 5 seconds
+  });
+
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // Add a key for SWR cache that changes on refresh
-  const [cacheKey, setCacheKey] = useState(`/api/airtable/agents?initial=${Date.now()}`);
+  const isCurrentlyLoading = isLoading || isValidating || isRefreshing;
 
-  // We let SWR call the GET endpoint on mount.
-  const { data: agents = [], mutate, isValidating, isLoading } = useSWR<Agent[]>(
-    cacheKey,
-    fetchAgents,
-    {
-      revalidateOnMount: true,
-      revalidateOnFocus: false,
-      revalidateIfStale: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 5000, // 5 seconds
-    }
-  );
-
-  // Handle manual refresh
+  // Handle manual refresh by calling POST /api/airtable/agents/refresh
   const handleRefresh = async () => {
     try {
       setIsRefreshing(true);
-      
       console.log("🔄 Manually refreshing agent list via POST endpoint...");
-      
-      // Call the refresh endpoint
-      const refreshRes = await fetch("/api/airtable/agents/refresh", { 
+
+      const refreshRes = await fetch("/api/airtable/agents/refresh", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-cache, no-store"
+          "Cache-Control": "no-cache, no-store",
         },
-        cache: "no-store"
+        cache: "no-store",
       });
-      
+
       if (!refreshRes.ok) {
         throw new Error(`Failed to refresh agents: ${refreshRes.status}`);
       }
-      
-      // Parse the new agents data
+
       const freshAgents = await refreshRes.json();
-      
-      console.log(`Received ${Array.isArray(freshAgents) ? freshAgents.length : 'unknown'} fresh agents`);
-      
-      // Generate a new cache key to force SWR to recognize this as new data
-      const newCacheKey = `/api/airtable/agents?refresh=${Date.now()}`;
-      setCacheKey(newCacheKey);
-      
-      // Update the SWR cache with the new key and data
+      console.log(
+        `Received ${Array.isArray(freshAgents) ? freshAgents.length : "unknown"} fresh agents`
+      );
+
+      // Immediately update SWR's cache for the same key
+      // so our dropdown sees the new data
       await mutate(freshAgents, {
-        revalidate: false,
+        revalidate: false, // Don't refetch from GET endpoint, trust our new data
       });
-      
+
       console.log("✅ SWR cache updated with fresh agents");
     } catch (error) {
       console.error("Failed to refresh agents:", error);
-      
-      // Force a complete reset and refetch on error
-      const newCacheKey = `/api/airtable/agents?error=${Date.now()}`;
-      setCacheKey(newCacheKey);
+
+      // Optional: Force a re-fetch from GET if something failed
+      await mutate(); // revalidate from the server
     } finally {
       setIsRefreshing(false);
     }
   };
-
-  const isCurrentlyLoading = isLoading || isValidating || isRefreshing;
 
   return (
     <div className="w-full">
@@ -121,7 +113,7 @@ export default function AgentSelect({
         <Label htmlFor="agentSelect" className="block text-sm font-medium text-primary-dark">
           {label}
         </Label>
-        
+
         {enableRefresh && (
           <button
             type="button"
@@ -129,11 +121,11 @@ export default function AgentSelect({
             disabled={isCurrentlyLoading}
             className="inline-flex items-center text-xs text-primary-medium hover:text-primary-dark disabled:opacity-50"
           >
-            <RefreshCw 
+            <RefreshCw
               className={cn(
                 "h-3 w-3 mr-1",
                 isCurrentlyLoading && "animate-spin"
-              )} 
+              )}
             />
             {isCurrentlyLoading ? "Refreshing..." : "Refresh"}
           </button>
@@ -151,7 +143,9 @@ export default function AgentSelect({
           id="agentSelect"
           className={cn(
             "flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-accent-gold-light focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-            error ? "focus:ring-red-500 border-red-500" : "border-input focus:ring-accent-gold-light",
+            error
+              ? "focus:ring-red-500 border-red-500"
+              : "border-input focus:ring-accent-gold-light",
             value ? "bg-white text-primary-dark" : "bg-gray-50 text-gray-400",
             isCurrentlyLoading && "opacity-70"
           )}
@@ -163,6 +157,7 @@ export default function AgentSelect({
             <ChevronDown className="h-4 w-4 text-primary-medium" />
           </Select.Icon>
         </Select.Trigger>
+
         <Select.Portal>
           <Select.Content
             className="z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border border-input bg-white shadow-md focus:outline-none focus:ring-2 focus:ring-accent-gold-light"
@@ -178,7 +173,7 @@ export default function AgentSelect({
               ) : agents.length === 0 ? (
                 <div className="py-2 px-8 text-sm text-gray-500">No agents found</div>
               ) : (
-                agents.map((agent: Agent) => (
+                agents.map((agent) => (
                   <Select.Item
                     key={agent.id}
                     value={agent.id}

@@ -4,7 +4,7 @@ import { MODULES } from "@/lib/modules/modules-directory";
 import ChildModulePageTemplate from "@/components/modules/ChildModuleComponent";
 import { FileText, FolderOpen, Bell } from "lucide-react";
 
-import SMListingFeatureForm from "./sm-listing-feature-form";
+import SMListingFeatureForm from "../../../components/modules/list-properties/generate-inquiries/tools/sm-listing-feature-form";
 import MarketingAssets from "@/components/modules/media/tools/MarketingAssets";
 import ListingMedia from "@/components/modules/media/tools/ListingMedia";
 import { Card } from "@/components/default/card";

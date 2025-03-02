@@ -1,4 +1,4 @@
-import redis from "../lib/core-services/cache/redisService.js";  // Notice the `.js` import
+import redis from "../lib/core-services/cache/cacheService.js";  // Notice the `.js` import
 
 async function testRedis() {
   console.log("🔄 Storing test key in Redis...");

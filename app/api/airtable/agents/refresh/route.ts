@@ -1,33 +1,37 @@
 // app/api/airtable/agents/refresh/route.ts
 
 import { NextResponse } from "next/server";
-import { forceRefreshAgentsCache } from "@/lib/core-services/cache/agents";
+import { initCoreServices } from "@/lib/core-services/serviceLoader";
+import { getFieldCache } from "@/lib/core-services/cache/fieldCacheService";
+import { agentsCacheConfig } from "@/lib/core-services/cache/fieldCacheConfigs";
 
 export async function POST() {
   try {
+    // Ensure 'cache' and 'airtable' services are fully initialized.
+    await initCoreServices(["cache", "airtable"]);
+
     const timestamp = new Date().toISOString();
     console.log(`🔄 Admin is explicitly refreshing the agent list at ${timestamp}...`);
     
-    // Use our explicit refresh function with cache purge
-    const freshAgents = await forceRefreshAgentsCache();
+    // Force a refresh by passing true
+    const freshAgents = await getFieldCache(agentsCacheConfig, true);
     
     console.log(`🔄 REFRESH COMPLETED: ${freshAgents.length} agents updated in cache at ${timestamp}`);
 
-    // Set cache control headers to ensure no caching
+    // Set cache control headers to prevent browser caching
     const headers = new Headers();
-    headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    headers.set('Pragma', 'no-cache');
-    headers.set('Expires', '0');
+    headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+    headers.set("Pragma", "no-cache");
+    headers.set("Expires", "0");
 
-    // Return the fresh data
     return NextResponse.json(freshAgents, { headers });
   } catch (error) {
     console.error("❌ Error refreshing agents cache:", error);
     return NextResponse.json(
-      { 
-        error: "Failed to refresh agent list", 
-        message: error instanceof Error ? error.message : "Unknown error"
-      }, 
+      {
+        error: "Failed to refresh agent list",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }
