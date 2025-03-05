@@ -7,6 +7,10 @@ import { AirtableService } from "../airtable/airtableService";
 import { User } from "@/types/core-services/auth";
 import { PermissionService } from "./permissionService";
 
+/**
+ * AuthService provides user authentication and authorization.
+ * It integrates with Clerk and Airtable to manage user roles and permissions.
+ */
 export class AuthService implements ServiceInterface {
   private airtableService: AirtableService | null = null;
 

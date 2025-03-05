@@ -28,7 +28,7 @@ export default function GenerateInquiries() {
       component: <SMListingFeatureForm />,
     },
     {
-      value: "marketing-assets",
+      value: "lead-gen-assets",
       label: "Lead-Gen Assets",
       description: "Access marketing materials and templates",
       tooltipText: "Here’s how to request a social media post...",
